@@ -5,4 +5,4 @@ After=graphical.target
 [Service]
 ExecStartPre=/bin/sleep 15
 Type=simple
-ExecStart=/v2en/scream 
+ExecStart=/bin/scream 

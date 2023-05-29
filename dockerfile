@@ -1,7 +1,6 @@
 FROM ubuntu:20.04
 
-WORKDIR /v2en
-COPY . /v2en
+WORKDIR /home
 ARG TZ="Asia/ho_chi_minh"
 ARG DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-c"] 
@@ -25,8 +24,9 @@ RUN source $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
 
 # detail at https://www.youtube.com/watch?v=jMHjVoRMG4A&t=556s
 COPY ./scream.service /etc/systemd/system/scream.service
+COPY ./scream /bin/scream
 RUN systemctl enable scream.service
 
-# fix issue at https://stackoverflow.com/questions/30209776/docker-container-will-automatically-stop-after-docker-run-d
+# fixed issue at https://stackoverflow.com/questions/30209776/docker-container-will-automatically-stop-after-docker-run-d
 ENTRYPOINT ["tail"]
 CMD ["-f","/dev/null"]
