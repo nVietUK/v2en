@@ -1,7 +1,6 @@
 name: Build and publish a Docker image
 on:
-  push:
-
+  workflow_dispatch
 jobs:
   build:
     name: Build & push docker image
