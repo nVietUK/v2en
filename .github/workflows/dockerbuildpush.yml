@@ -23,4 +23,4 @@ jobs:
         with:
           context: .
           push: true
-          labels: nvietuk/v2en:ghBuild
+          tags: nvietuk/v2en:ghBuild
