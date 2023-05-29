@@ -13,7 +13,6 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | d
 # sound support for docker at https://leimao.github.io/blog/Docker-Container-Audio/
 # xrdp features at https://github.com/danchitnis/container-xrdp/blob/master/ubuntu-xfce/Dockerfile
 RUN apt install gcc portaudio19-dev wget git gh build-essential \
-    alsa-base alsa-utils libsndfile1-dev libasound2-dev \
     qtbase5-dev qtbase5-dev-tools python3-pyqt5 python3-pyqt5.qtsvg pyqt5-dev-tools \
     xfce4 xfce4-clipman-plugin xfce4-cpugraph-plugin xfce4-netload-plugin xfce4-screenshooter xfce4-taskmanager xfce4-terminal xfce4-xkb-plugin \
     sudo wget xorgxrdp xrdp \
