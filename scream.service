@@ -1,8 +1,0 @@
-[Unit]
-Description=Scream
-After=graphical.target
-
-[Service]
-ExecStartPre=/bin/sleep 15
-Type=simple
-ExecStart=/bin/scream 
