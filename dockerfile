@@ -4,9 +4,14 @@ WORKDIR /home
 ARG TZ="Asia/ho_chi_minh"
 ARG DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-c"] 
-RUN apt update && apt upgrade -y
+
+RUN apt update && apt upgrade -y && apt install curl -y
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+&& chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+&& echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null && apt update
+
 # sound support for docker at https://leimao.github.io/blog/Docker-Container-Audio/
-RUN apt install gcc portaudio19-dev wget git build-essential \
+RUN apt install gcc portaudio19-dev wget git gh build-essential \
     alsa-base alsa-utils libsndfile1-dev libasound2-dev \
     qtbase5-dev qtbase5-dev-tools python3-pyqt5 python3-pyqt5.qtsvg pyqt5-dev-tools \
     -y && apt-get clean
