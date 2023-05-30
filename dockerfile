@@ -10,12 +10,13 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | d
 && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
 && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null && apt update
 
-# sound support for docker at https://leimao.github.io/blog/Docker-Container-Audio/
 # xrdp features at https://github.com/danchitnis/container-xrdp/blob/master/ubuntu-xfce/Dockerfile
 RUN apt install gcc portaudio19-dev wget git gh build-essential \
     qtbase5-dev qtbase5-dev-tools python3-pyqt5 python3-pyqt5.qtsvg pyqt5-dev-tools \
-    xfce4 xfce4-clipman-plugin xfce4-cpugraph-plugin xfce4-netload-plugin xfce4-screenshooter xfce4-taskmanager xfce4-terminal xfce4-xkb-plugin \
+    xfce4 xfce4-taskmanager xfce4-terminal xfce4-xkb-plugin \
     sudo wget xorgxrdp xrdp \
+    #audio support
+    pulseaudio alsa-utils alsa-plugins \ 
     -y && apt-get clean && \
     apt remove -y light-locker xscreensaver && \
     apt autoremove -y && \
@@ -49,6 +50,6 @@ COPY ./scream /bin/scream
 RUN echo '/bin/scream' >> ~/.profile
 
 ENV name admin
-ENV pass 123
+ENV pass lmao
 ENV issudo yes
 ENTRYPOINT ["/bin/bash", "-c", "/usr/bin/run.sh ${name} ${pass} ${issudo}"]
