@@ -5,6 +5,9 @@ ARG TZ="Asia/ho_chi_minh"
 ARG DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-c"] 
 
+# https://stackoverflow.com/questions/40877643/apt-get-install-in-ubuntu-16-04-docker-image-etc-resolv-conf-device-or-reso install resolvconf
+RUN echo "resolvconf resolvconf/linkify-resolvconf boolean false" | debconf-set-selections
+
 RUN apt update && apt upgrade -y && apt -y install curl ca-certificates \
 # fixed slow apt download: https://github.com/NobodyXu/apt-fast-docker/blob/master/Dockerfile
     software-properties-common
@@ -16,7 +19,7 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | d
 && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
 && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null && apt-fast update && apt-fast upgrade -y
 
-RUN apt-fast install gcc wget git vim firefox gh build-essential \
+RUN apt-fast install gcc wget git vim firefox gh build-essential iproute2 resolvconf \
 # for the sound support
     qtbase5-dev qtbase5-dev-tools python3-pyqt5 python3-pyqt5.qtsvg pyqt5-dev-tools portaudio19-dev\
 # xrdp features at https://github.com/danchitnis/container-xrdp/blob/master/ubuntu-xfce/Dockerfile
