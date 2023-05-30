@@ -16,7 +16,7 @@ RUN apt install gcc portaudio19-dev wget git gh build-essential \
     xfce4 xfce4-taskmanager xfce4-terminal xfce4-xkb-plugin \
     sudo wget xorgxrdp xrdp \
     #audio support
-    pulseaudio alsa-utils alsa-plugins \ 
+    pulseaudio alsa-utils libasound2-plugins \ 
     -y && apt-get clean && \
     apt remove -y light-locker xscreensaver && \
     apt autoremove -y && \
