@@ -14,6 +14,7 @@ RUN apt update && apt upgrade -y && apt -y install curl ca-certificates \
 RUN add-apt-repository ppa:apt-fast/stable
 RUN apt install apt-fast -y
 RUN sed -i 's/htt[p|ps]:\/\/archive.ubuntu.com\/ubuntu\//mirror:\/\/mirrors.ubuntu.com\/mirrors.txt/g' /etc/apt/sources.list
+RUN wget https://raw.githubusercontent.com/ilikenwf/apt-fast/master/apt-fast.conf -o /etc/apt-fast.conf
 # install gh cli for private repo
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
 && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
