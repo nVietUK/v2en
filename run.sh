@@ -21,12 +21,6 @@ echo
 
 users=$(($#/3))
 mod=$(($# % 3))
-
-#echo "users is $users"
-#echo "mod is $mod"
-
-echo $@ 
-
 if [[ $# -eq 0 ]]; then 
     echo "No input parameters. exiting..."
     echo "there should be 3 input parameters per user"
@@ -56,6 +50,7 @@ while [ $# -ne 0 ]; do
     wait
     echo "user '$1' is added"
     usermod -a -G audio $1
+    adduser $1 pulse-access
 
     # Shift all the parameters down by three
     shift 3
@@ -75,8 +70,8 @@ pactl load-module module-virtual-source master=auto_null.monitor format=s16le so
 # Set VirtualMic as default input source;
 echo "Setting default source: ";
 pactl set-default-source VirtualMic
-
 echo -e "This script is ended\n"
+
 echo -e "starting xrdp services...\n"
 trap "stop_xrdp_services" SIGKILL SIGTERM SIGHUP SIGINT EXIT
 start_xrdp_services

@@ -20,8 +20,8 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | d
 && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null && apt-fast update && apt-fast upgrade -y
 
 RUN apt-fast install gcc wget git vim firefox gh build-essential iproute2 resolvconf \
-# for the sound support
-    qtbase5-dev qtbase5-dev-tools python3-pyqt5 python3-pyqt5.qtsvg pyqt5-dev-tools portaudio19-dev \
+# for the python's microphone module
+    portaudio19-dev \
 # xrdp features at https://github.com/danchitnis/container-xrdp/blob/master/ubuntu-xfce/Dockerfile
     xfce4 xfce4-taskmanager xfce4-terminal xfce4-xkb-plugin \
     sudo wget xorgxrdp xrdp \
@@ -43,12 +43,6 @@ RUN mkdir -p $CONDA_PREFIX/etc/conda/activate.d
 RUN echo 'CUDNN_PATH=$(dirname $(/anaconda/bin/python3 -c "import nvidia.cudnn;print(nvidia.cudnn.__file__)"))' >> $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
 RUN echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/:$CUDNN_PATH/lib' >> $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
 RUN source $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
-
-# sound support
-RUN git clone https://github.com/falkTX/Cadence.git
-WORKDIR /home/Cadence
-RUN make && make install
-WORKDIR /home
 
 ENV name admin
 ENV pass lmao
