@@ -21,7 +21,7 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | d
 
 RUN apt-fast install gcc wget git vim firefox gh build-essential iproute2 resolvconf \
 # for the sound support
-    qtbase5-dev qtbase5-dev-tools python3-pyqt5 python3-pyqt5.qtsvg pyqt5-dev-tools portaudio19-dev\
+    qtbase5-dev qtbase5-dev-tools python3-pyqt5 python3-pyqt5.qtsvg pyqt5-dev-tools portaudio19-dev \
 # xrdp features at https://github.com/danchitnis/container-xrdp/blob/master/ubuntu-xfce/Dockerfile
     xfce4 xfce4-taskmanager xfce4-terminal xfce4-xkb-plugin \
     sudo wget xorgxrdp xrdp \
@@ -30,14 +30,6 @@ RUN apt-fast install gcc wget git vim firefox gh build-essential iproute2 resolv
     apt-fast remove -y light-locker xscreensaver && \
     apt-fast autoremove -y && \
     rm -rf /var/cache/apt /var/lib/apt/lists/*
-
-# https://github.com/danielguerra69/ubuntu-xrdp/blob/master/Dockerfile
-RUN mkdir /var/run/dbus && \
-    cp /etc/X11/xrdp/xorg.conf /etc/X11 && \
-    sed -i "s/console/anybody/g" /etc/X11/Xwrapper.config && \
-    sed -i "s/xrdp\/xorg/xorg/g" /etc/xrdp/sesman.ini && \
-    echo "xfce4-session" >> /etc/skel/.Xsession
-EXPOSE 3389
 
 # detail at https://www.tensorflow.org/install/pip#windows-wsl2
 RUN wget https://repo.anaconda.com/archive/Anaconda3-2023.03-1-Linux-x86_64.sh -O anaconda.sh
@@ -52,9 +44,6 @@ RUN echo 'CUDNN_PATH=$(dirname $(/anaconda/bin/python3 -c "import nvidia.cudnn;p
 RUN echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/:$CUDNN_PATH/lib' >> $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
 RUN source $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
 
-COPY ./run.sh /usr/bin/
-RUN chmod +x /usr/bin/run.sh
-
 # sound support
 RUN git clone https://github.com/falkTX/Cadence.git
 WORKDIR /home/Cadence
@@ -65,6 +54,17 @@ ENV name admin
 ENV pass lmao
 ENV issudo yes
 ENTRYPOINT ["/bin/bash", "-c", "/usr/bin/run.sh ${name} ${pass} ${issudo}"]
+
+# https://github.com/danielguerra69/ubuntu-xrdp/blob/master/Dockerfile
+RUN mkdir /var/run/dbus && \
+    cp /etc/X11/xrdp/xorg.conf /etc/X11 && \
+    sed -i "s/console/anybody/g" /etc/X11/Xwrapper.config && \
+    sed -i "s/xrdp\/xorg/xorg/g" /etc/xrdp/sesman.ini && \
+    echo "xfce4-session" >> /etc/skel/.Xsession
+EXPOSE 3389
+
+COPY ./run.sh /usr/bin/
+RUN chmod +x /usr/bin/run.sh
 
 # fix sound issue: https://superuser.com/questions/1539634/pulseaudio-daemon-wont-start-inside-docker
 RUN adduser root pulse-access
