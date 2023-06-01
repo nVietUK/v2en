@@ -23,6 +23,10 @@ RUN apt-fast install gcc git vim firefox gh \
 # xrdp features at https://github.com/danchitnis/container-xrdp/blob/master/ubuntu-xfce/Dockerfile
     xfce4 xfce4-terminal xfce4-xkb-plugin \
     sudo xorgxrdp xrdp \
+# ssh server
+    openssh-server \
+# nvidia's cudnn
+    zlib1g \
 # clean stage
     -y && apt-fast clean && \
     apt-fast remove -y light-locker xscreensaver && \
@@ -36,7 +40,7 @@ RUN rm anaconda.sh
 RUN /anaconda/bin/conda install -c conda-forge cudatoolkit=11.8.0 -y
 RUN /anaconda/bin/python3 -m pip install nvidia-cudnn-cu11==8.6.0.163 tensorflow==2.12.* \
     pyqt5==5.15.9 PyQtWebEngine==5.15.6 requests_mock clyent==1.2.1 nbformat==5.4.0 PyAudio \
-    requests==2.28.1 SpeechRecognition FuzzyTM'>=0.4.0' -I
+    requests==2.28.1 SpeechRecognition FuzzyTM'>=0.4.0' tensorRT -I
 RUN mkdir -p $CONDA_PREFIX/etc/conda/activate.d
 RUN echo 'CUDNN_PATH=$(dirname $(/anaconda/bin/python3 -c "import nvidia.cudnn;print(nvidia.cudnn.__file__)"))' >> $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
 RUN echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/:$CUDNN_PATH/lib' >> $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
@@ -60,6 +64,9 @@ EXPOSE 3389
 
 COPY ./run.sh /usr/bin/
 RUN chmod +x /usr/bin/run.sh
+
+RUN service ssh start
+EXPOSE 22
 
 # fix sound issue: https://superuser.com/questions/1539634/pulseaudio-daemon-wont-start-inside-docker
 RUN adduser root pulse-access
