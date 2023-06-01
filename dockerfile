@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM tensorflow/tensorflow:latest-gpu-jupyter
 
 WORKDIR /home
 ARG TZ="Asia/ho_chi_minh"
@@ -17,37 +17,17 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | d
 && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
 && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null && apt-fast update && apt-fast upgrade -y
 
-RUN apt-fast install gcc git vim firefox gh \
-# for the python's microphone module
-    portaudio19-dev \
+RUN apt-fast install gcc git git-lfs vim firefox gh \
 # xrdp features at https://github.com/danchitnis/container-xrdp/blob/master/ubuntu-xfce/Dockerfile
     xfce4 xfce4-terminal xfce4-xkb-plugin \
     sudo xorgxrdp xrdp \
 # ssh server
     openssh-server \
-# nvidia's cudnn
-    zlib1g \
 # clean stage
     -y && apt-fast clean && \
     apt-fast remove -y light-locker xscreensaver && \
     apt-fast autoremove -y && \
     rm -rf /var/cache/apt /var/lib/apt/lists/*
-
-# detail at https://www.tensorflow.org/install/pip#windows-wsl2
-RUN curl https://repo.anaconda.com/archive/Anaconda3-2023.03-1-Linux-x86_64.sh -o anaconda.sh
-RUN bash anaconda.sh -b -p /anaconda
-RUN rm anaconda.sh
-RUN /anaconda/bin/conda install -c conda-forge cudatoolkit=11.8.0 -y
-RUN /anaconda/bin/python3 -m pip install nvidia-cudnn-cu11==8.6.0.163 tensorflow==2.12.* \
-    pyqt5==5.15.9 PyQtWebEngine==5.15.6 requests_mock clyent==1.2.1 nbformat==5.4.0 PyAudio \
-    requests==2.28.1 SpeechRecognition FuzzyTM'>=0.4.0' tensorRT -I
-RUN mkdir -p $CONDA_PREFIX/etc/conda/activate.d
-RUN echo 'CUDNN_PATH=$(dirname $(/anaconda/bin/python3 -c "import nvidia.cudnn;print(nvidia.cudnn.__file__)"))' >> $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
-RUN echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/:$CUDNN_PATH/lib' >> $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
-RUN source $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
-RUN /anaconda/bin/python3 -c "import tensorflow as tf; print(tf.config.list_physical_devices('GPU'))"
-RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-RUN /anaconda/bin/python3 get-pip.py
 
 ENV name admin
 ENV pass lmao
