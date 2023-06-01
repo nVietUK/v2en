@@ -44,7 +44,6 @@ RUN source $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
 RUN /anaconda/bin/python3 -c "import tensorflow as tf; print(tf.config.list_physical_devices('GPU'))"
 RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
 RUN /anaconda/bin/python3 get-pip.py
-RUN alias python=/anaconda/bin/python3
 
 ENV name admin
 ENV pass lmao
