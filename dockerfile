@@ -5,7 +5,7 @@ ARG TZ="Asia/ho_chi_minh"
 ARG DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-c"] 
 
-RUN apt update && apt upgrade -y && apt -y install curl ca-certificates \
+RUN apt update && apt -y install curl ca-certificates \
 # fixed slow apt download: https://github.com/NobodyXu/apt-fast-docker/blob/master/Dockerfile
     software-properties-common
 RUN add-apt-repository ppa:apt-fast/stable
