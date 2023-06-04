@@ -52,9 +52,6 @@ while [ $# -ne 0 ]; do
     usermod -a -G audio $1
     adduser $1 pulse-access
 
-    echo "alias python=/anaconda/bin/python3" >> ~/.bashrc
-    echo "alias pip=/anaconda/bin/pip" >> ~/.bashrc
-
     # Shift all the parameters down by three
     shift 3
 done
