@@ -13,6 +13,7 @@ import os
 english_path='/v2en/data/small_vocab_en.txt'
 french_path='/v2en/data/small_vocab_fr.txt'
 
+# check if gpu avaliable
 if len(tf.config.list_physical_devices('GPU')) == 0:
     print("test is only applicable on GPU")
     exit(0)
@@ -24,11 +25,17 @@ def load_data(path):
 
     return data.split('\n')
 
+# input:
+#       x: a list of sentences
+# output:
+#       tokenizer.texts_to_sequences(x): a list of sentences of word's id
+#       tokenizer: a list of word's id and statistic of it
 def tokenize(x):
     tokenizer = Tokenizer()
     tokenizer.fit_on_texts(x)
     return tokenizer.texts_to_sequences(x), tokenizer
 
+# return a list of same length elements
 def pad(x, length=None):
     return pad_sequences(x, maxlen=length, padding='post')
 
