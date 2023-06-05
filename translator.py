@@ -10,8 +10,8 @@ from keras.losses import sparse_categorical_crossentropy
 import tensorflow as tf
 import os
 
-input_path='/v2en/data/small_vocab_in.txt'
-output_path='/v2en/data/small_vocab_ou.txt'
+input_path='/v2en/data/inpt.txt'
+output_path='/v2en/data/oupt.txt'
 
 # check if gpu avaliable
 if len(tf.config.list_physical_devices('GPU')) == 0:
@@ -104,6 +104,17 @@ output_sentences=load_data(output_path)
 
 preproc_input_sentences, preproc_output_sentences, input_tokenizer, output_tokenizer =\
     preprocess(input_sentences, output_sentences)
+
+max_input_sequence_length = preproc_input_sentences.shape[1]
+max_output_sequence_length = preproc_output_sentences.shape[1]
+input_vocab_size = len(input_tokenizer.word_index)
+output_vocab_size = len(output_tokenizer.word_index)
+
+print('Data Preprocessed')
+print("Max input sentence length:", max_input_sequence_length)
+print("Max output sentence length:", max_output_sequence_length)
+print("input vocabulary size:", input_vocab_size)
+print("output vocabulary size:", output_vocab_size)
     
 # Reshaping the input to work with a basic RNN
 tmp_x = pad(preproc_input_sentences, preproc_output_sentences.shape[1])
@@ -117,5 +128,5 @@ simple_rnn_model = embed_model(
 
 simple_rnn_model.summary()
 
-history=simple_rnn_model.fit(tmp_x, preproc_output_sentences, batch_size=1024, epochs=250, validation_split=0.2)
-simple_rnn_model.save('model.h5')
+history=simple_rnn_model.fit(tmp_x, preproc_output_sentences, batch_size=24, epochs=250, validation_split=0.2)
+simple_rnn_model.save('en-vi.h5')
