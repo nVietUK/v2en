@@ -1,11 +1,11 @@
-FROM tensorflow/tensorflow:latest-gpu-jupyter
+FROM tensorflow/tensorflow:nightly-gpu
 
 WORKDIR /home
 ARG TZ="Asia/ho_chi_minh"
 ARG DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-c"] 
 
-RUN apt update && apt -y install curl ca-certificates \
+RUN apt update && apt -y install curl ca-certificates libcublas-12-1 libcublas-dev-12-1 \
 # fixed slow apt download: https://github.com/NobodyXu/apt-fast-docker/blob/master/Dockerfile
     software-properties-common
 RUN add-apt-repository ppa:apt-fast/stable

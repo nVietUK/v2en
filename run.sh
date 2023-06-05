@@ -52,6 +52,11 @@ while [ $# -ne 0 ]; do
     usermod -a -G audio $1
     adduser $1 pulse-access
 
+    echo "if [ -d "/usr/local/cuda-12" ]; then" >> ~/.profile
+    echo "  PATH=/usr/local/cuda-12/bin${PATH:+:${PATH}}" >> ~/.profile
+    echo "  LD_LIBRARY_PATH=/usr/local/cuda-12/targets/x86_64-linux/lib/${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}" >> ~/.profile
+    echo "fi" >> ~/.profile
+
     # Shift all the parameters down by three
     shift 3
 done
