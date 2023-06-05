@@ -1,1 +1,1 @@
-docker run -p 3390:3389 --gpus all -v C:\Users\vietuk\v2en:/v2en --cap-add=NET_ADMIN --name v2enENV --rm nvietuk/v2en:test
+docker run -p 3390:3389 --gpus all -v C:\Users\vietuk\v2en:/v2en --cap-add=NET_ADMIN --name v2enENV nvietuk/v2en:test

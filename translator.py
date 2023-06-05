@@ -2,8 +2,8 @@
 import numpy as np
 from keras.preprocessing.text import Tokenizer
 from keras.utils import pad_sequences
-from keras.models import Sequential
-from keras.layers import GRU, Dense, TimeDistributed, Dropout
+from keras.models import Model
+from keras.layers import GRU, Input, Dense, TimeDistributed, Activation, RepeatVector, Bidirectional
 from keras.layers import Embedding
 from keras.optimizers import Adam
 from keras.losses import sparse_categorical_crossentropy
@@ -75,34 +75,27 @@ def embed_model(input_shape, output_sequence_length, input_vocab_size, output_vo
     :param output_vocab_size: Number of unique output words in the dataset
     :return: Keras model built, but not trained
     """
-    # Hyperparameters
+    #Config Hyperparameters
     learning_rate = 0.001
-    node_amount = 256
+    latent_dim = 128
     
-    # TODO: Build the layers
-    model = Sequential()
-    model.add(Embedding(input_vocab_size, node_amount, input_length=input_shape[1], input_shape=input_shape[1:]))
-    model.add(GRU(node_amount, return_sequences=True))    
-    model.add(TimeDistributed(Dense(node_amount*4, activation='relu')))
-    model.add(Dropout(0.5))
-    model.add(GRU(node_amount, return_sequences=True))    
-    model.add(TimeDistributed(Dense(node_amount*4, activation='softplus')))
-    model.add(Dropout(0.5))
-    model.add(GRU(node_amount, return_sequences=True))    
-    model.add(TimeDistributed(Dense(node_amount*4, activation='tanh')))
-    model.add(Dropout(0.5))
-    model.add(GRU(node_amount, return_sequences=True))    
-    model.add(TimeDistributed(Dense(node_amount*4, activation='selu')))
-    model.add(Dropout(0.5))
-    model.add(GRU(node_amount, return_sequences=True))    
-    model.add(TimeDistributed(Dense(node_amount*4, activation='elu')))
-    model.add(Dropout(0.5))
-    model.add(TimeDistributed(Dense(output_vocab_size, activation='softmax'))) 
-
-    # Compile model
+    #Config Model
+    inputs = Input(shape=input_shape[1:])
+    embedding_layer = Embedding(input_dim=input_vocab_size,
+                                output_dim=output_sequence_length,
+                                mask_zero=False)(inputs)
+    bd_layer = Bidirectional(GRU(output_sequence_length))(embedding_layer)
+    encoding_layer = Dense(latent_dim, activation='relu')(bd_layer)
+    decoding_layer = RepeatVector(output_sequence_length)(encoding_layer)
+    output_layer = Bidirectional(GRU(latent_dim, return_sequences=True))(decoding_layer)
+    outputs = TimeDistributed(Dense(output_vocab_size, activation='softmax'))(output_layer)
+    
+    #Create Model from parameters defined above
+    model = Model(inputs=inputs, outputs=outputs)
     model.compile(loss=sparse_categorical_crossentropy,
                   optimizer=Adam(learning_rate),
                   metrics=['accuracy'])
+    
     return model
 
 #Now loading data
