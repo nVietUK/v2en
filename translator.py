@@ -10,8 +10,8 @@ from keras.losses import sparse_categorical_crossentropy
 import tensorflow as tf
 import os
 
-english_path='/v2en/data/small_vocab_en.txt'
-french_path='/v2en/data/small_vocab_fr.txt'
+input_path='/v2en/data/small_vocab_in.txt'
+output_path='/v2en/data/small_vocab_ou.txt'
 
 # check if gpu avaliable
 if len(tf.config.list_physical_devices('GPU')) == 0:
@@ -66,27 +66,38 @@ def logits_to_text(logits, tokenizer):
   #Then selecting that label we reverse-enumerate the word from id
     return ' '.join([index_to_words[prediction] for prediction in np.argmax(logits, 1)])
 
-def embed_model(input_shape, output_sequence_length, english_vocab_size, french_vocab_size):
+def embed_model(input_shape, output_sequence_length, input_vocab_size, output_vocab_size):
     """
     Build and train a RNN model using word embedding on x and y
     :param input_shape: Tuple of input shape
     :param output_sequence_length: Length of output sequence
-    :param english_vocab_size: Number of unique English words in the dataset
-    :param french_vocab_size: Number of unique French words in the dataset
+    :param input_vocab_size: Number of unique input words in the dataset
+    :param output_vocab_size: Number of unique output words in the dataset
     :return: Keras model built, but not trained
     """
-    # TODO: Implement
-
     # Hyperparameters
-    learning_rate = 0.005
+    learning_rate = 0.001
+    node_amount = 256
     
     # TODO: Build the layers
     model = Sequential()
-    model.add(Embedding(english_vocab_size, 256, input_length=input_shape[1], input_shape=input_shape[1:]))
-    model.add(GRU(256, return_sequences=True))    
-    model.add(TimeDistributed(Dense(1024, activation='relu')))
+    model.add(Embedding(input_vocab_size, node_amount, input_length=input_shape[1], input_shape=input_shape[1:]))
+    model.add(GRU(node_amount, return_sequences=True))    
+    model.add(TimeDistributed(Dense(node_amount*4, activation='relu')))
     model.add(Dropout(0.5))
-    model.add(TimeDistributed(Dense(french_vocab_size, activation='softmax'))) 
+    model.add(GRU(node_amount, return_sequences=True))    
+    model.add(TimeDistributed(Dense(node_amount*4, activation='softplus')))
+    model.add(Dropout(0.5))
+    model.add(GRU(node_amount, return_sequences=True))    
+    model.add(TimeDistributed(Dense(node_amount*4, activation='tanh')))
+    model.add(Dropout(0.5))
+    model.add(GRU(node_amount, return_sequences=True))    
+    model.add(TimeDistributed(Dense(node_amount*4, activation='selu')))
+    model.add(Dropout(0.5))
+    model.add(GRU(node_amount, return_sequences=True))    
+    model.add(TimeDistributed(Dense(node_amount*4, activation='elu')))
+    model.add(Dropout(0.5))
+    model.add(TimeDistributed(Dense(output_vocab_size, activation='softmax'))) 
 
     # Compile model
     model.compile(loss=sparse_categorical_crossentropy,
@@ -95,34 +106,23 @@ def embed_model(input_shape, output_sequence_length, english_vocab_size, french_
     return model
 
 #Now loading data
-english_sentences=load_data(english_path)
-french_sentences=load_data(french_path)
+input_sentences=load_data(input_path)
+output_sentences=load_data(output_path)
 
-preproc_english_sentences, preproc_french_sentences, english_tokenizer, french_tokenizer =\
-    preprocess(english_sentences, french_sentences)
+preproc_input_sentences, preproc_output_sentences, input_tokenizer, output_tokenizer =\
+    preprocess(input_sentences, output_sentences)
     
-max_english_sequence_length = preproc_english_sentences.shape[1]
-max_french_sequence_length = preproc_french_sentences.shape[1]
-english_vocab_size = len(english_tokenizer.word_index)
-french_vocab_size = len(french_tokenizer.word_index)
-
-print('Data Preprocessed')
-print("Max English sentence length:", max_english_sequence_length)
-print("Max French sentence length:", max_french_sequence_length)
-print("English vocabulary size:", english_vocab_size)
-print("French vocabulary size:", french_vocab_size)
-
 # Reshaping the input to work with a basic RNN
-tmp_x = pad(preproc_english_sentences, preproc_french_sentences.shape[1])
-tmp_x = tmp_x.reshape((-1, preproc_french_sentences.shape[-2]))
+tmp_x = pad(preproc_input_sentences, preproc_output_sentences.shape[1])
+tmp_x = tmp_x.reshape((-1, preproc_output_sentences.shape[-2]))
 
 simple_rnn_model = embed_model(
     tmp_x.shape,
-    preproc_french_sentences.shape[1],
-    len(english_tokenizer.word_index)+1,
-    len(french_tokenizer.word_index)+1)
+    preproc_output_sentences.shape[1],
+    len(input_tokenizer.word_index)+1,
+    len(output_tokenizer.word_index)+1)
 
 simple_rnn_model.summary()
 
-history=simple_rnn_model.fit(tmp_x, preproc_french_sentences, batch_size=1024, epochs=10000, validation_split=0.2)
+history=simple_rnn_model.fit(tmp_x, preproc_output_sentences, batch_size=1024, epochs=250, validation_split=0.2)
 simple_rnn_model.save('model.h5')
