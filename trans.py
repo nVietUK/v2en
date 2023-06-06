@@ -9,6 +9,7 @@ from keras.optimizers import Adam
 from keras.losses import sparse_categorical_crossentropy
 import tensorflow as tf
 import os
+from datetime import datetime
 
 target='en-vi'
 input_path='./data/{}.txt'.format(target[:2])
@@ -137,5 +138,7 @@ try:
 
     history=simple_rnn_model.fit(tmp_x, preproc_output_sentences, batch_size=32, epochs=20, validation_split=0.2)
     simple_rnn_model.save('./models/{}.keras'.format(target))
+
+    np.savetxt('./logs/{}.txt'.format(datetime.now().strftime("%d.%m.%Y %H;%M;%S")), np.array(history.history['val_accuracy']), delimiter=",")
 except:
     pass
