@@ -33,12 +33,16 @@ if choice == "2":
 if choice == "3":
     dataINp = "./data/train.{}".format(target[:2]); dataOUp = "./data/train.{}".format(target[-2:])
     while 1:
+        isError = False; isagree = '!'
         dataINf = open(dataINp, "r"); dataOUf = open(dataOUp, "r")
         dataIN = dataINf.readline(); dataOU = dataOUf.readline() 
         if not dataIN or not dataOU: 
             break
-        isagree=input("\t{} input\n\t\t- {}\n\n\t{} input\n\t\t- {}\n\n\tAdd to database? (Y/n)".format(target[:2], dataIN, target[-2:], dataOU))
-        if (isagree.lower() == 'y' or isagree==''):
+        if (dataIN.find('&') != -1 or dataOU.find('&') != -1):
+            isError = True
+        else:
+            isagree=input("\t{} input\n\t\t- {}\n\n\t{} input\n\t\t- {}\n\n\tAdd to database? (Y/n)".format(target[:2], dataIN, target[-2:], dataOU))
+        if (isagree.lower() == 'y' or isagree=='') and not isError:
             inptf = open(input_path, "a"); ouptf = open(output_path, "a")
             inptf.write("\n{}".format(convert(dataIN.replace('\n','')))); ouptf.write("\n{}".format(convert(dataOU.replace('\n', ''))))
             inptf.close(); ouptf.close()
