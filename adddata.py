@@ -1,8 +1,15 @@
+import os
 
 def convert(x):
     x=x.replace(".", " . ").replace(",", " , ").replace("(", " ( ")
     x=x.replace(")", " ) ").replace("\"", " \" ").replace(":", " : ")
     return x
+
+def cleanScreen():
+    if os.name == 'nt':
+        os.system('cls')
+    else:
+        os.system('clear')
 
 target='vi-en'
 input_path='./data/{}.txt'.format(target[:2])
@@ -11,6 +18,7 @@ output_path='./data/{}.txt'.format(target[-2:])
 choice = input("Select input type:\n\t(1): keyboard input\n\t(2): file input\n\t(3): database input\n >> ")
 if choice == "1":
     while (1):
+        cleanScreen()
         oupt = input("Output sentence\n>> ")
         inpt = input("Input sentence\n>> ")
         if (inpt == "exit" or oupt == "exit"):
@@ -23,6 +31,7 @@ if choice == "1":
 if choice == "2":
     file = open('./data/input.txt', "r")
     while 1:
+        cleanScreen()
         inpt = file.readline(); oupt = file.readline()
         if (not inpt or not oupt):
             break
@@ -33,6 +42,7 @@ if choice == "2":
 if choice == "3":
     dataINp = "./data/train.{}".format(target[:2]); dataOUp = "./data/train.{}".format(target[-2:])
     while 1:
+        cleanScreen()
         isError = False; isagree = '!'
         dataINf = open(dataINp, "r"); dataOUf = open(dataOUp, "r")
         dataIN = dataINf.readline(); dataOU = dataOUf.readline() 

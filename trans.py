@@ -8,7 +8,7 @@ from keras.layers import Embedding
 from keras.optimizers import Adam
 from keras.losses import sparse_categorical_crossentropy
 import tensorflow as tf
-import os
+import os, sys
 from datetime import datetime
 
 target='en-vi'
@@ -136,9 +136,11 @@ except:
 try:
     simple_rnn_model.summary()
 
-    history=simple_rnn_model.fit(tmp_x, preproc_output_sentences, batch_size=16, epochs=20, validation_split=0.2)
+    history=simple_rnn_model.fit(tmp_x, preproc_output_sentences, batch_size=2, epochs=2000, validation_split=0.2)
     simple_rnn_model.save('./models/{}.keras'.format(target))
 
     np.savetxt('./logs/{}.txt'.format(datetime.now().strftime("%d.%m.%Y %H;%M;%S")), np.array(history.history['val_accuracy']), delimiter=",")
-except:
-    pass
+except ValueError:
+    os.remove('./models/{}.keras'.format(target))
+    os.execv(sys.executable, [os.path.basename(sys.executable)] + sys.argv)
+except Exception as e: print(e)
