@@ -100,12 +100,6 @@ def embed_model(input_shape, output_sequence_length, input_vocab_size, output_vo
     
     return model
 
-def scheduler(epoch):
-  if epoch < 10:
-    return 0.001
-  else:
-    return 0.001 * tf.math.exp(0.1 * (10 - epoch))
-
 #Now loading data
 input_sentences=load_data(input_path)
 output_sentences=load_data(output_path)
@@ -142,7 +136,7 @@ except:
 try:
     simple_rnn_model.summary()
 
-    history=simple_rnn_model.fit(tmp_x, preproc_output_sentences, batch_size=6, epochs=500, validation_split=0.2)
+    history=simple_rnn_model.fit(tmp_x, preproc_output_sentences, batch_size=18, epochs=120, validation_split=0.2)
     simple_rnn_model.save('./models/{}.keras'.format(target))
 
     np.savetxt('./logs/{}.txt'.format(datetime.now().strftime("%d.%m.%Y %H;%M;%S")), np.array(history.history['val_accuracy']), delimiter=",")
