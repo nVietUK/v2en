@@ -122,24 +122,25 @@ print("output vocabulary size:", output_vocab_size)
 tmp_x = pad(preproc_input_sentences, preproc_output_sentences.shape[1])
 tmp_x = tmp_x.reshape((-1, preproc_output_sentences.shape[-2]))
 
+model_path = './models/{}.keras'.format(target)
 try:
-    simple_rnn_model = tf.keras.saving.load_model('./models/{}.keras'.format(target))
+    simple_rnn_model = tf.keras.saving.load_model(model_path)
     print("model loaded")
 except:
     print("loading model failed")
-    simple_rnn_model = embed_model(
-        tmp_x.shape,
-        preproc_output_sentences.shape[1],
-        len(input_tokenizer.word_index)+1,
-        len(output_tokenizer.word_index)+1)
+simple_rnn_model = embed_model(
+    tmp_x.shape,
+    preproc_output_sentences.shape[1],
+    len(input_tokenizer.word_index)+1,
+    len(output_tokenizer.word_index)+1)
 
 try:
     simple_rnn_model.summary()
 
-    history=simple_rnn_model.fit(tmp_x, preproc_output_sentences, batch_size=18, epochs=120, validation_split=0.2)
-    simple_rnn_model.save('./models/{}.keras'.format(target))
+    history=simple_rnn_model.fit(tmp_x, preproc_output_sentences, batch_size=2, epochs=150, validation_split=0.2)
+    simple_rnn_model.save(model_path)
 
-    np.savetxt('./logs/{}.txt'.format(datetime.now().strftime("%d.%m.%Y %H;%M;%S")), np.array(history.history['val_accuracy']), delimiter=",")
+    np.savetxt('./logs/{}.txt'.format(datetime.now().strftime("%d.%m.%Y %H-%M-%S")), np.array(history.history['accuracy']), delimiter=",")
 except ValueError:
     os.remove('./models/{}.keras'.format(target))
     os.execv(sys.executable, [os.path.basename(sys.executable)] + sys.argv)
