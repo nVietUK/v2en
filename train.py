@@ -78,7 +78,7 @@ def embed_model(input_shape, output_sequence_length, input_vocab_size, output_vo
     :return: Keras model built, but not trained
     """
     #Config Hyperparameters
-    learning_rate = 0.001
+    learning_rate = 0.005
     latent_dim = 128
     
     #Config Model
@@ -137,7 +137,7 @@ simple_rnn_model = embed_model(
 try:
     simple_rnn_model.summary()
 
-    history=simple_rnn_model.fit(tmp_x, preproc_output_sentences, batch_size=2, epochs=150, validation_split=0.2)
+    history=simple_rnn_model.fit(tmp_x, preproc_output_sentences, batch_size=256, epochs=56, validation_split=0.2)
     simple_rnn_model.save(model_path)
 
     np.savetxt('./logs/{}.txt'.format(datetime.now().strftime("%d.%m.%Y %H-%M-%S")), np.array(history.history['accuracy']), delimiter=",")
