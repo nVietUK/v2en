@@ -3,15 +3,18 @@ import numpy as np
 from keras.preprocessing.text import Tokenizer
 from keras.utils import pad_sequences
 from keras.models import Model
-from keras.layers import GRU, Input, Dense, TimeDistributed, Activation, RepeatVector, Bidirectional
+from keras.layers import GRU, Input, Dense, TimeDistributed, RepeatVector, Bidirectional
 from keras.layers import Embedding
 from keras.optimizers import Adam
 from keras.losses import sparse_categorical_crossentropy
 import tensorflow as tf
-import os, sys
+import os, sys, pickle
 from datetime import datetime
+from dotenv import load_dotenv
 
-target='en-vi'
+load_dotenv()
+
+target=os.getenv("TARGET")
 input_path='./data/{}.txt'.format(target[:2])
 output_path='./data/{}.txt'.format(target[-2:])
 
@@ -60,14 +63,6 @@ def preprocess(x, y):
 
     return preprocess_x, preprocess_y, x_tk, y_tk
 
-def logits_to_text(logits, tokenizer):
-    index_to_words = {id: word for word, id in tokenizer.word_index.items()}
-    index_to_words[0] = '<PAD>'
-
-  #So basically we are predicting output for a given word and then selecting best answer
-  #Then selecting that label we reverse-enumerate the word from id
-    return ' '.join([index_to_words[prediction] for prediction in np.argmax(logits, 1)])
-
 def embed_model(input_shape, output_sequence_length, input_vocab_size, output_vocab_size):
     """
     Build and train a RNN model using word embedding on x and y
@@ -101,12 +96,24 @@ def embed_model(input_shape, output_sequence_length, input_vocab_size, output_vo
     return model
 
 #Now loading data
-input_sentences=load_data(input_path)
-output_sentences=load_data(output_path)
+input_sentences=load_data(input_path); output_sentences=load_data(output_path)
 
 preproc_input_sentences, preproc_output_sentences, input_tokenizer, output_tokenizer =\
     preprocess(input_sentences, output_sentences)
 
+
+max_input_sequence_length = preproc_input_sentences.shape[1]
+max_output_sequence_length = preproc_output_sentences.shape[1]
+input_vocab_size = len(input_tokenizer.word_index)
+output_vocab_size = len(output_tokenizer.word_index)
+
+print('Data Preprocessed')
+print("Max input sentence length:", max_input_sequence_length)
+print("Max output sentence length:", max_output_sequence_length)
+print("input vocabulary size:", input_vocab_size)
+print("output vocabulary size:", output_vocab_size)
+    
+    
 max_input_sequence_length = preproc_input_sentences.shape[1]
 max_output_sequence_length = preproc_output_sentences.shape[1]
 input_vocab_size = len(input_tokenizer.word_index)
@@ -144,4 +151,9 @@ try:
 except ValueError:
     os.remove('./models/{}.keras'.format(target))
     os.execv(sys.executable, [os.path.basename(sys.executable)] + sys.argv)
-except Exception as e: print(e)
+except Exception as e: print(e); exit(0)
+
+val_cache_path=os.getenv("VAL_CACHE_PATH")
+with open(val_cache_path, 'wb') as f: 
+    pickle.dump([output_tokenizer, input_tokenizer, pad_sequences,\
+                 preproc_output_sentences], f)

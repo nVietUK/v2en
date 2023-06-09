@@ -1,0 +1,1 @@
+docker run --gpus all -it -v .:/v2en --name dirty-data nvietuk/v2en:test
