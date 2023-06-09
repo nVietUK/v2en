@@ -1,0 +1,1 @@
+docker run -p 3390:3389 --gpus all -it -v .:/v2en --cap-add=NET_ADMIN --name mainBrnch nvietuk/v2en:test

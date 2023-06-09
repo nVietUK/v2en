@@ -1,8 +1,11 @@
 import os
+from dotnet import load_dotnet
 from googletrans import Translator
 from difflib import SequenceMatcher
 
-target = 'vi-en'
+load_dotnet()
+
+target = os.getenv("TARGET")
 input_path = './data/{}.txt'.format(target[:2])
 output_path = './data/{}.txt'.format(target[-2:])
 
