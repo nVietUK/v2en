@@ -1,9 +1,9 @@
 import os
-from dotnet import load_dotnet
+from dotenv import load_dotenv
 from googletrans import Translator
 from difflib import SequenceMatcher
 
-load_dotnet()
+load_dotenv()
 
 target = os.getenv("TARGET")
 input_path = './data/{}.txt'.format(target[:2])
