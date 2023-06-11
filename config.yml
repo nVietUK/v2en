@@ -1,5 +1,5 @@
 mysql:
-    host: localhost:27017
+    host: localhost:24444
     user: root
     passwd: lmao
 v2en:
