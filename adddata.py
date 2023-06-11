@@ -1,19 +1,29 @@
-import os
-from dotenv import load_dotenv
-from googletrans import Translator
+import os, pymysql, yaml
 from difflib import SequenceMatcher
+from deep_translator import GoogleTranslator
 
-load_dotenv()
-
-target = os.getenv("TARGET")
-input_path = './data/{}.txt'.format(target[:2])
-output_path = './data/{}.txt'.format(target[-2:])
+with open('config.yml', "r") as ymlfile:
+    cfg = yaml.safe_load(ymlfile)
+target = cfg['v2en']['target']
+"""
+input_path = './data/{}.txt.temp'.format(target[:2])
+output_path = './data/{}.txt.temp'.format(target[-2:])
+"""
+accecpt_percentage = 0.8
+is_auto = False
+conn = pymysql.connect(
+    host=cfg['mysql']['host'],
+    user=cfg['mysql']['user'],
+    password=cfg['mysql']['passwd'],
+    db='mydatabase',
+    charset='utf8mb4',
+    cursorclass=pymysql.cursors.DictCursor
+)
 
 def convert(x):
     x = x.replace(".", " . ").replace(",", " , ").replace("(", " ( ")
     x = x.replace(")", " ) ").replace("\"", " \" ").replace(":", " : ")
     return x
-
 
 def cleanScreen():
     if os.name == 'nt':
@@ -21,79 +31,56 @@ def cleanScreen():
     else:
         os.system('clear')
 
-
-def gtrans(x, target):
-    trans = Translator().translate(x, target).text
-    return trans
-
 def diffratio(x, y):
     return SequenceMatcher(None, x, y).ratio()
 
-choice = input("Select input type:\n\t(1): keyboard input\n\t(2): file input\n\t(3): database input\n >> ")
-if choice == "1":
-    while (1):
-        cleanScreen()
-        oupt = input("Output sentence\n>> ")
-        inpt = input("Input sentence\n>> ")
-        if (inpt == "exit" or oupt == "exit"):
-            break
-        if inpt == "" or oupt == "":
-            continue
-        inptf = open(input_path, "a")
-        ouptf = open(output_path, "a")
-        inptf.write("\n{}".format(convert(inpt)))
-        ouptf.write("\n{}".format(convert(oupt)))
-        inptf.close()
-        ouptf.close()
-if choice == "2":
-    file = open('./data/input.txt', "r")
-    while 1:
-        cleanScreen()
-        inpt = file.readline()
-        oupt = file.readline()
-        if (not inpt or not oupt):
-            break
-        inptf = open(input_path, "a")
-        ouptf = open(output_path, "a")
-        inptf.write("\n{}".format(convert(inpt.replace('\n', ''))))
-        ouptf.write("\n{}".format(convert(oupt.replace('\n', ''))))
-        inptf.close()
-        ouptf.close()
-    file.close()
-if choice == "3":
-    dataINp = "./data/train.{}".format(target[:2])
-    dataOUp = "./data/train.{}".format(target[-2:])
-    inptf = open(input_path, "a"); ouptf = open(output_path, "a")
-    dinptf = open('./data/dump.{}'.format(target[:2]), "a"); douptf = open('./data/dump.{}'.format(target[-2:]), "a")
-    while 1:
-        cleanScreen()
-        iserror = False
-        isagree = '!'
-        dataINf = open(dataINp, "r")
-        dataOUf = open(dataOUp, "r")
-        dataIN = dataINf.readline().replace('\n', '')
-        dataOU = dataOUf.readline().replace('\n', '')
-        transIN = gtrans(dataOU, target[:2]); transOU = gtrans(dataIN, target[-2:])
-        otoiratio = diffratio(dataIN, transIN); itooratio = diffratio(dataOU, transOU)
-        if not dataIN or not dataOU:
-            break
-        if (dataIN.find('&') != -1 or dataOU.find('&') != -1): iserror = True
-        elif otoiratio > 0.73 or itooratio > 0.73: isagree = ''
-        else:
-            print("\t{} input (acc: {})\n\t\t- {}\n\t\t- {}\n".format(target[:2], diffratio(dataIN, transIN), dataIN, transIN))
-            print("\t{} input (acc: {})\n\t\t- {}\n\t\t- {}\n".format(target[-2:], diffratio(dataOU, transOU), dataOU, transOU))
-            isagree = input("\tAdd to database? (Y/n)")
-        if (isagree.lower() == 'y' or isagree == '') and not iserror:
-            inptf.write("\n{}".format(convert(dataIN)))
-            ouptf.write("\n{}".format(convert(dataOU)))
-        elif (isagree == 'exit'): break
-        else:
-            dinptf.write("\n{}".format(convert(dataIN)))
-            douptf.write("\n{}".format(convert(dataOU)))
-        saveIN = dataINf.read().splitlines(True)
-        saveOU = dataOUf.read().splitlines(True)
-        dataINf.close(); dataOUf.close()
-        with open(dataINp, "w") as file: file.writelines(saveIN[1:])
-        with open(dataOUp, "w") as file: file.writelines(saveOU[1:])
-    inptf.close(); ouptf.close()
-    dinptf.close(); douptf.close()
+def gtrans(x, target):
+    return GoogleTranslator(target=target).translate(x)
+
+first_input_path = "./data/train.{}".format(target[:2])
+first_input_dump = open('./data/dump.{}'.format(target[:2]), "a"); 
+second_input_path = "./data/train.{}".format(target[-2:])
+second_input_dump = open('./data/dump.{}'.format(target[-2:]), "a")
+while 1:
+    cleanScreen()
+    is_error = False
+    is_agree = '!'
+    first_input_file = open(first_input_path, "r")
+    first_input_sent = first_input_file.readline().replace('\n', '')
+    first_input_gtrans = gtrans(first_input_sent, target[-2:])
+    second_input_file = open(second_input_path, "r")
+    second_input_sent = second_input_file.readline().replace('\n', '')
+    second_input_gtrans = gtrans(second_input_sent, target[:2]); 
+    fir_to_sec_gratio = diffratio(first_input_sent, second_input_gtrans) 
+    sec_to_fir_gratio = diffratio(second_input_sent, first_input_gtrans)
+    if not first_input_sent or not second_input_sent:
+        break
+    if (first_input_sent.find('&') != -1 or second_input_sent.find('&') != -1): is_error = True
+    elif fir_to_sec_gratio > accecpt_percentage or is_auto \
+        or sec_to_fir_gratio > accecpt_percentage: is_agree = ''
+    else:
+        print("\t{} input (acc: {})\n\t\t- {}\n\t\t- {}\n"\
+                .format(target[:2], diffratio(first_input_sent, second_input_gtrans), first_input_sent, second_input_gtrans))
+        print("\t{} input (acc: {})\n\t\t- {}\n\t\t- {}\n"\
+                .format(target[-2:], diffratio(second_input_sent, first_input_gtrans), second_input_sent, first_input_gtrans))
+        is_agree = input("\tAdd to database? (Y/n)")
+    if (is_agree.lower() == 'y' or is_agree == '') and not is_error:
+        try:
+            with conn.cursor() as cursor:
+                sql = "INSERT INTO `trans` (`source`, `target`) VALUES (%s, %s)"
+                cursor.execute(sql, (convert(first_input_sent), convert(second_input_sent)))
+            conn.commit()
+            print("Record inserted successfully")
+        except Exception as e: print(e); exit(0)
+        finally:
+            conn.close()
+    elif (is_agree == 'exit'): break
+    else:
+        first_input_dump.write("\n{}".format(convert(first_input_sent)))
+        second_input_dump.write("\n{}".format(convert(second_input_sent)))
+    saveIN = first_input_file.read().splitlines(True)
+    saveOU = second_input_file.read().splitlines(True)
+    first_input_file.close(); second_input_file.close()
+    with open(first_input_path, "w") as file: file.writelines(saveIN[1:])
+    with open(second_input_path, "w") as file: file.writelines(saveOU[1:])
+first_input_dump.close(); second_input_dump.close()

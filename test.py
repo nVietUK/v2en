@@ -1,19 +1,20 @@
 import re, os, pickle
 import tensorflow as tf
 import numpy as np
+from keras.utils import pad_sequences
 from dotenv import load_dotenv
 
 load_dotenv()
 
 target=os.getenv("TARGET")
-val_cache_path=os.getenv("VAL_CACHE_PATH")
-
+val_cache_path='./cache/{}.pkl'.format(target)
 model_path = './models/{}.keras'.format(target)
+
 try:
     rnn_model = tf.keras.saving.load_model(model_path)
     print("model loaded")
     with open(val_cache_path, 'rb') as f:
-        output_tokenizer, input_tokenizer, pad_sequences,\
+        output_tokenizer, input_tokenizer, \
         preproc_output_sentences = pickle.load(f)
 except Exception as e:
     print("loading model failed"); print(e); exit(0)
@@ -36,5 +37,5 @@ def final_predictions(text):
     print(sentence.shape)
     print(logits_to_text(rnn_model.predict(sentence[:1])[0], output_tokenizer))
 
-txt=input().lower()
+txt=input(">> ")
 final_predictions(re.sub(r'[^\w]', ' ', txt))

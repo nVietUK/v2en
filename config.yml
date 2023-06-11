@@ -1,0 +1,6 @@
+mysql:
+    host: localhost:27017
+    user: root
+    passwd: lmao
+v2en:
+    target: en-vi

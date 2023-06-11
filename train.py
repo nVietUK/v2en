@@ -17,6 +17,7 @@ load_dotenv()
 target=os.getenv("TARGET")
 input_path='./data/{}.txt'.format(target[:2])
 output_path='./data/{}.txt'.format(target[-2:])
+model_path = './models/model.keras'
 
 # check if gpu avaliable
 if len(tf.config.list_physical_devices('GPU')) == 0:
@@ -100,41 +101,11 @@ input_sentences=load_data(input_path); output_sentences=load_data(output_path)
 
 preproc_input_sentences, preproc_output_sentences, input_tokenizer, output_tokenizer =\
     preprocess(input_sentences, output_sentences)
-
-
-max_input_sequence_length = preproc_input_sentences.shape[1]
-max_output_sequence_length = preproc_output_sentences.shape[1]
-input_vocab_size = len(input_tokenizer.word_index)
-output_vocab_size = len(output_tokenizer.word_index)
-
-print('Data Preprocessed')
-print("Max input sentence length:", max_input_sequence_length)
-print("Max output sentence length:", max_output_sequence_length)
-print("input vocabulary size:", input_vocab_size)
-print("output vocabulary size:", output_vocab_size)
-    
-    
-max_input_sequence_length = preproc_input_sentences.shape[1]
-max_output_sequence_length = preproc_output_sentences.shape[1]
-input_vocab_size = len(input_tokenizer.word_index)
-output_vocab_size = len(output_tokenizer.word_index)
-
-print('Data Preprocessed')
-print("Max input sentence length:", max_input_sequence_length)
-print("Max output sentence length:", max_output_sequence_length)
-print("input vocabulary size:", input_vocab_size)
-print("output vocabulary size:", output_vocab_size)
     
 # Reshaping the input to work with a basic RNN
 tmp_x = pad(preproc_input_sentences, preproc_output_sentences.shape[1])
 tmp_x = tmp_x.reshape((-1, preproc_output_sentences.shape[-2]))
 
-model_path = './models/{}.keras'.format(target)
-try:
-    simple_rnn_model = tf.keras.saving.load_model(model_path)
-    print("model loaded")
-except:
-    print("loading model failed")
 simple_rnn_model = embed_model(
     tmp_x.shape,
     preproc_output_sentences.shape[1],
@@ -144,16 +115,14 @@ simple_rnn_model = embed_model(
 try:
     simple_rnn_model.summary()
 
-    history=simple_rnn_model.fit(tmp_x, preproc_output_sentences, batch_size=6, epochs=200, validation_split=0.2)
+    history=simple_rnn_model.fit(tmp_x, preproc_output_sentences, batch_size=1024, epochs=200, validation_split=0.2)
     simple_rnn_model.save(model_path)
 
-    np.savetxt('./logs/{}.txt'.format(datetime.now().strftime("%d.%m.%Y %H-%M-%S")), np.array(history.history['accuracy']), delimiter=",")
-except ValueError:
-    os.remove('./models/{}.keras'.format(target))
-    os.execv(sys.executable, [os.path.basename(sys.executable)] + sys.argv)
+    np.savetxt('./logs/{}.txt'.format(datetime.now().strftime("%d.%m.%Y %H-%M-%S")),\
+                np.array(history.history['accuracy']), delimiter=",")
 except Exception as e: print(e); exit(0)
 
-val_cache_path=os.getenv("VAL_CACHE_PATH")
+val_cache_path='./cache/{}.pkl'.format(target)
 with open(val_cache_path, 'wb') as f: 
-    pickle.dump([output_tokenizer, input_tokenizer, pad_sequences,\
+    pickle.dump([output_tokenizer, input_tokenizer, \
                  preproc_output_sentences], f)

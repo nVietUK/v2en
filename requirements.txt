@@ -1,2 +1,3 @@
-python_dotenv
-googletrans
+pymysql
+deep-translator
+pyyaml

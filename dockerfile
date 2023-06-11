@@ -1,9 +1,17 @@
-FROM tensorflow/tensorflow:nightly-gpu
+FROM tensorflow/tensorflow:2.13.0rc1-gpu-jupyter
 
 WORKDIR /home
 ARG TZ="Asia/ho_chi_minh"
 ARG DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-c"] 
+
+# install mongoDB
+RUN curl -fsSL https://pgp.mongodb.com/server-6.0.asc | \
+    gpg -o /usr/share/keyrings/mongodb-server-6.0.gpg \
+    --dearmor
+RUN echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-6.0.gpg ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/6.0 multiverse" | \
+    tee /etc/apt/sources.list.d/mongodb-org-6.0.list
+EXPOSE 27017
 
 RUN apt update && apt -y install curl ca-certificates libcublas-12-1 libcublas-dev-12-1 \
 # fixed slow apt download: https://github.com/NobodyXu/apt-fast-docker/blob/master/Dockerfile
@@ -14,8 +22,9 @@ RUN sed -i 's/htt[p|ps]:\/\/archive.ubuntu.com\/ubuntu\//mirror:\/\/mirrors.ubun
 COPY ./apt-fast.conf /etc/apt-fast.conf
 # install gh cli for private repo
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
-&& chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
-&& echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null && apt-fast update && apt-fast upgrade -y
+    && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \ 
+    | tee /etc/apt/sources.list.d/github-cli.list > /dev/null && apt-fast update && apt-fast upgrade -y
 
 RUN apt-fast install gcc git git-lfs vim firefox gh \
 # xrdp features at https://github.com/danchitnis/container-xrdp/blob/master/ubuntu-xfce/Dockerfile
@@ -23,6 +32,8 @@ RUN apt-fast install gcc git git-lfs vim firefox gh \
     sudo xorgxrdp xrdp \
 # ssh server
     openssh-server \
+# mongoDB
+    mongodb-org \
 # clean stage
     -y && apt-fast clean && \
     apt-fast remove -y light-locker xscreensaver && \
