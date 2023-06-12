@@ -54,6 +54,8 @@ RUN chmod +x /usr/bin/run.sh
 RUN service ssh start
 EXPOSE 22
 EXPOSE 24444
+EXPOSE 80
+EXPOSE 443
 
 # fix sound issue: https://superuser.com/questions/1539634/pulseaudio-daemon-wont-start-inside-docker
 RUN adduser root pulse-access
