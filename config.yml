@@ -1,6 +1,7 @@
 mysql:
-    host: localhost:24444
+    host: localhost
     user: root
-    passwd: lmao
+    password: lmao
+    port: 24444
 v2en:
     target: en-vi

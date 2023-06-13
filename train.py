@@ -115,7 +115,7 @@ simple_rnn_model = embed_model(
 try:
     simple_rnn_model.summary()
 
-    history=simple_rnn_model.fit(tmp_x, preproc_output_sentences, batch_size=1024, epochs=200, validation_split=0.2)
+    history=simple_rnn_model.fit(tmp_x, preproc_output_sentences, batch_size=6, epochs=20, validation_split=0.2)
     simple_rnn_model.save(model_path)
 
     np.savetxt('./logs/{}.txt'.format(datetime.now().strftime("%d.%m.%Y %H-%M-%S")),\
