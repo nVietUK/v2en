@@ -2,13 +2,10 @@ import re, os, pickle
 import tensorflow as tf
 import numpy as np
 from keras.utils import pad_sequences
-from dotenv import load_dotenv
-
-load_dotenv()
 
 target=os.getenv("TARGET")
-val_cache_path='./cache/{}.pkl'.format(target)
-model_path = './models/{}.keras'.format(target)
+val_cache_path = f'./cache/{target}.pkl'
+model_path = f'./models/{target}.keras'
 
 try:
     rnn_model = tf.keras.saving.load_model(model_path)
