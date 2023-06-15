@@ -1,7 +1,4 @@
-mysql:
-    host: localhost
-    user: root
-    password: lmao
-    port: 24444
+sqlite:
+    path: ./database.db
 v2en:
     target: en-vi
