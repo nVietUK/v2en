@@ -7,6 +7,7 @@ import multiprocessing.pool
 import time
 from difflib import SequenceMatcher
 import deep_translator
+import string
 
 with open("config.yml", "r") as ymlfile:
     cfg = yaml.safe_load(ymlfile)
@@ -41,12 +42,20 @@ def printInfo(name, pid):
 
 # translate def
 def gtrans(x: str, source: str, target: str) -> str:
-    return deep_translator.GoogleTranslator(source=source, target=target).translate(x)
-
+    try:
+        return deep_translator.GoogleTranslator(source=source, target=target).translate(x)
+    except Exception as e:
+        printError(gtrans.__name__, e, False)
 
 
 def dtrans(x, source, target):
-    return deep_translator.MyMemoryTranslator(source=source, target=target).translate(x)
+    return ""
+    try:
+        return deep_translator.MyMemoryTranslator(source=source, target=target).translate(x)
+    except deep_translator.exceptions.TooManyRequests:
+        return ""
+    except Exception as e:
+        printError(dtrans.__name__, e, False)
 
 
 # utils
@@ -55,9 +64,9 @@ def diffratio(x, y):
 
 
 def convert(x: str) -> str:
-    x = x.replace(".", " . ").replace(",", " , ").replace("(", " ( ").replace("“", " “ ")
-    x = x.replace(")", " ) ").replace('"', ' " ').replace(":", " : ").replace("'", " ' ")
-    x = x.replace("”", " ” ").replace("’", " ’ ").replace("-", " - ")
+    x = x.replace("“", " “ ").replace("”", " ” ").replace("’", " ’ ")
+    for punc in string.punctuation:
+        x = x.replace(punc, f" {punc} ")
     return x.lower().replace("  ", " ").replace("  ", " ")
 
 
@@ -191,7 +200,7 @@ def checkSpelling(text, dictionary) -> str:
                 or word.isnumeric()
                 or isExistOnWiki(word)
                 or isExistOnWiki(f"{words[idx-1]} {word}")
-                or isExistOnWiki(f"{word} {words[idx+1]}")
+                or (idx+1 < len(words) and isExistOnWiki(f"{word} {words[idx+1]}"))
             ):
                 outstr += f"{word} "
             else:
@@ -230,9 +239,9 @@ if __name__ == "__main__":
     first_dictionary = loadDictionary(first_dictionary_path)
     second_dictionary = loadDictionary(second_dictionary_path)
     first_input_path = f"./data/{lang_source}.txt"
-    first_input_dump = open(f"./data/dump.{lang_source}", "a")
+    first_input_dump = open(f"./data/{lang_source}.dump", "a")
     second_input_path = f"./data/{lang_target}.txt"
-    second_input_dump = open(f"./data/dump.{lang_target}", "a")
+    second_input_dump = open(f"./data/{lang_target}.dump", "a")
     while 1:
         time_start = time.time()
         is_error = False
