@@ -12,9 +12,9 @@ import string
 with open("config.yml", "r") as ymlfile:
     cfg = yaml.safe_load(ymlfile)
 target = cfg["v2en"]["target"]
-lang_source = target[:2]
+first_input_lang = target[:2]
 debug = False
-lang_target = target[-2:]
+second_input_lang = target[-2:]
 accecpt_percentage = 0.65
 is_auto = True
 table_name = "Translation"
@@ -104,7 +104,7 @@ def loadDictionary(path):
         if os.stat(path).st_size == 0:
             return []
         with open(path, "r") as f:
-            return f.read().splitlines(True)
+            return [word.rstrip('\n') for word in f.read().splitlines(True)]
     except Exception as e:
         printError(loadDictionary.__name__, e)
 
@@ -192,7 +192,7 @@ def getSQLCursor(path):
 
 
 # language utils
-def checkSpelling(text, dictionary) -> str:
+def checkSpelling(text, dictionary, lang) -> str:
     printInfo(checkSpelling.__name__, multiprocessing.current_process().pid)
     try:
         words = text.split()
@@ -218,13 +218,15 @@ def checkSpelling(text, dictionary) -> str:
             return checkSpelling(text, dictionary)
         else:
             printError(f"add word {word}", "", False)
+            with open(f"./cache/{lang}.err", 'a') as f:
+                f.write(word)
             return ""
     except Exception as e:
         printError(checkSpelling.__name__, e)
 
 
 def checkSpellingExecute(cmd):
-    return checkSpelling(cmd[0], cmd[1])
+    return checkSpelling(cmd[0], cmd[1], cmd[2])
 
 
 def checkSpellingPool(cmds):
@@ -235,16 +237,14 @@ def checkSpellingPool(cmds):
 if __name__ == "__main__":
     sql_connection = getSQLCursor(cfg["sqlite"]["path"])
     createSQLtable(sql_connection)
-    checkLangFile(lang_source, lang_target)
+    checkLangFile(first_input_lang, second_input_lang)
 
-    first_dictionary_path = f"./cache/{lang_source}.dic"
-    second_dictionary_path = f"./cache/{lang_target}.dic"
+    first_dictionary_path = f"./cache/{first_input_lang}.dic"
+    second_dictionary_path = f"./cache/{second_input_lang}.dic"
     first_dictionary = loadDictionary(first_dictionary_path)
     second_dictionary = loadDictionary(second_dictionary_path)
-    first_input_path = f"./data/{lang_source}.txt"
-    first_input_dump = open(f"./data/{lang_source}.dump", "a")
-    second_input_path = f"./data/{lang_target}.txt"
-    second_input_dump = open(f"./data/{lang_target}.dump", "a")
+    first_input_path = f"./data/{first_input_lang}.txt"
+    second_input_path = f"./data/{second_input_lang}.txt"
     while 1:
         time_start = time.time()
         is_error = False
@@ -256,16 +256,18 @@ if __name__ == "__main__":
             print("Done!")
             exit()
         first_input_file = open(first_input_path, "r")
+        first_input_dump = open(f"./data/{first_input_lang}.dump", "a")
         second_input_file = open(second_input_path, "r")
+        second_input_dump = open(f"./data/{second_input_lang}.dump", "a")
         first_input_sent, second_input_sent = checkSpellingPool(
             (
                 [
                     convert(str(first_input_file.readline()).replace("\n", "")),
-                    first_dictionary,
+                    first_dictionary, first_input_lang
                 ],
                 [
                     convert(str(second_input_file.readline()).replace("\n", "")),
-                    second_dictionary,
+                    second_dictionary, second_input_lang
                 ],
             )
         )
@@ -281,20 +283,20 @@ if __name__ == "__main__":
                 ) = checkSpellingPool(
                     (
                         (
-                            convert(gtrans(first_input_sent, lang_source, lang_target)),
-                            second_dictionary,
+                            convert(gtrans(first_input_sent, first_input_lang, second_input_lang)),
+                            second_dictionary, second_input_lang
                         ),
                         (
-                            convert(gtrans(second_input_sent, lang_target, lang_source)),
-                            first_dictionary,
+                            convert(gtrans(second_input_sent, second_input_lang, first_input_lang)),
+                            first_dictionary, first_input_lang
                         ),
                         (
-                            convert(dtrans(first_input_sent, lang_source, lang_target)),
-                            second_dictionary,
+                            convert(dtrans(first_input_sent, first_input_lang, second_input_lang)),
+                            second_dictionary, second_input_lang
                         ),
                         (
-                            convert(dtrans(second_input_sent, lang_target, lang_source)),
-                            first_dictionary,
+                            convert(dtrans(second_input_sent, second_input_lang, first_input_lang)),
+                            first_dictionary, first_input_lang
                         ),
                     )
                 )
@@ -332,10 +334,10 @@ if __name__ == "__main__":
                     if not is_auto:
                         cleanScreen()
                         print(
-                            f"\t{lang_source} input (acc: {fir_to_sec_ratio})\n\t\t- {first_input_sent}\n\t\t- {second_input_trans}\n"
+                            f"\t{first_input_lang} input (acc: {fir_to_sec_ratio})\n\t\t- {first_input_sent}\n\t\t- {second_input_trans}\n"
                         )
                         print(
-                            f"\t{lang_target} input (acc: {sec_to_fir_ratio})\n\t\t- {second_input_sent}\n\t\t- {first_input_trans}\n"
+                            f"\t{second_input_lang} input (acc: {sec_to_fir_ratio})\n\t\t- {second_input_sent}\n\t\t- {first_input_trans}\n"
                         )
                         is_agree = askUserStr("\tAdd to database? (Y/n)")
                     else:
@@ -343,20 +345,20 @@ if __name__ == "__main__":
                 elif not add_dtrans and not is_auto:
                     cleanScreen()
                     print(
-                        f"\t{lang_source} input (acc: {fir_to_sec_dratio})\n\t\t- {first_input_sent}\n\t\t- {second_input_dtrans}\n"
+                        f"\t{first_input_lang} input (acc: {fir_to_sec_dratio})\n\t\t- {first_input_sent}\n\t\t- {second_input_dtrans}\n"
                     )
                     print(
-                        f"\t{lang_target} input (acc: {sec_to_fir_dratio})\n\t\t- {second_input_sent}\n\t\t- {first_input_dtrans}\n"
+                        f"\t{second_input_lang} input (acc: {sec_to_fir_dratio})\n\t\t- {second_input_sent}\n\t\t- {first_input_dtrans}\n"
                     )
                     is_add = askUserYN("\tAdd to database?")
                     add_dtrans = is_add.lower() == "y" or is_add == ""
                 elif not add_gtrans and not is_auto:
                     cleanScreen()
                     print(
-                        f"\t{lang_source} input (acc: {fir_to_sec_gratio})\n\t\t- {first_input_sent}\n\t\t- {second_input_gtrans}\n"
+                        f"\t{first_input_lang} input (acc: {fir_to_sec_gratio})\n\t\t- {first_input_sent}\n\t\t- {second_input_gtrans}\n"
                     )
                     print(
-                        f"\t{lang_target} input (acc: {sec_to_fir_gratio})\n\t\t- {second_input_sent}\n\t\t- {first_input_gtrans}\n"
+                        f"\t{second_input_lang} input (acc: {sec_to_fir_gratio})\n\t\t- {second_input_sent}\n\t\t- {first_input_gtrans}\n"
                     )
                     is_add = askUserYN("\tAdd to database?")
                     add_gtrans = is_add.lower() == "y" or is_add == ""
@@ -396,8 +398,9 @@ if __name__ == "__main__":
         elif is_agree == "exit":
             break
         else:
-            first_input_dump.write(f"\n{(first_input_sent)}")
-            second_input_dump.write(f"\n{(second_input_sent)}")
+            if first_input_sent != "" and second_input_sent != "":
+                first_input_dump.write(f"\n{(first_input_sent)}")
+                second_input_dump.write(f"\n{(second_input_sent)}")
         saveIN = first_input_file.read().splitlines(True)
         saveOU = second_input_file.read().splitlines(True)
         first_input_file.close()
@@ -412,7 +415,7 @@ if __name__ == "__main__":
             "|",
             second_input_sent,
         )
-    first_input_dump.close()
-    second_input_dump.close()
-    saveDictionary(first_dictionary_path, first_dictionary)
-    saveDictionary(second_dictionary_path, second_dictionary)
+        first_input_dump.close()
+        second_input_dump.close()
+        saveDictionary(first_dictionary_path, first_dictionary)
+        saveDictionary(second_dictionary_path, second_dictionary)
