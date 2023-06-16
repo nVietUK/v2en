@@ -4,7 +4,9 @@ import sqlite3
 import requests
 import pickle
 import multiprocessing
+import multiprocessing.pool
 import time
+import ast
 from difflib import SequenceMatcher
 from deep_translator import GoogleTranslator, MyMemoryTranslator
 
@@ -12,17 +14,37 @@ with open("config.yml", "r") as ymlfile:
     cfg = yaml.safe_load(ymlfile)
 target = cfg["v2en"]["target"]
 lang_source = target[:2]
+debug = False
 lang_target = target[-2:]
 """
 input_path = './data/{}.txt.temp'.format(target[:2])
 output_path = './data/{}.txt.temp'.format(target[-2:])
 """
 accecpt_percentage = 0.65
-is_auto = False
+is_auto = True
 table_name = "Translation"
 num_process = 6
 
 
+# debug def
+def printError(text, error, is_exit=True):
+    print(
+        "---------------------\n\tExpectation while {} \
+        \n\tError type: {}\n--------------------- \
+          \n\n{}".format(
+            text, type(error), error
+        )
+    )
+    if is_exit:
+        exit(0)
+
+
+def printInfo(name, pid):
+    if not debug: return
+    print(f"Dive into {name} with pid id: {pid}")
+
+
+# translate def
 def gtrans(x: str, source: str, target: str) -> str:
     return GoogleTranslator(source=source, target=target).translate(x)
 
@@ -31,19 +53,59 @@ def dtrans(x, source, target):
     return MyMemoryTranslator(source=source, target=target).translate(x)
 
 
+# utils
 def diffratio(x, y):
     return SequenceMatcher(None, x, y).ratio()
 
 
-def isExistOnWikiExecute(word: str) -> bool:
+def convert(x: str) -> str:
+    x = x.replace(".", " . ").replace(",", " , ").replace("(", " ( ")
+    x = x.replace(")", " ) ").replace('"', ' " ').replace(":", " : ")
+    return x.lower().replace("  ", " ").replace("  ", " ")
+
+
+def isExistOnWiki(word: str) -> bool:
+    printInfo(isExistOnWiki.__name__, multiprocessing.current_process().name)
     return requests.get(f"https://en.wiktionary.org/wiki/{word}").status_code == 200
 
 
-def isExistOnWiki(words: tuple) -> bool:
-    pool = multiprocessing.Pool(processes=num_process)
-    return pool.map(isExistOnWikiExecute, words)
+def isExistOnWikiPool(cmds):
+    pool = multiprocessing.pool.ThreadPool(processes=num_process)
+    return pool.map(isExistOnWiki, cmds)
 
 
+def cleanScreen() -> None:
+    if os.name == "nt":
+        os.system("cls")
+    else:
+        os.system("clear")
+
+
+def checkLangFile(*args):
+    for target in args:
+        if os.path.exists(f"./cache/{target}.dic"):
+            continue
+        open(f"./cache/{target}.dic", "w").close()
+
+
+def loadDictionary(path):
+    try:
+        if os.stat(path).st_size == 0:
+            return list()
+        with open(path, "r") as f:
+            return f.read().splitlines(True)
+    except Exception as e:
+        printError(loadDictionary.__name__, e)
+
+
+def saveDictionary(path, dictionary):
+    try:
+        with open(path, "w") as f:
+            f.writelines(dictionary)
+    except Exception as e:
+        printError(saveDictionary.__name__, e)
+
+# ask user defs
 def askUserStr(name_value):
     answer = input(f"\t{name_value} >> ")
     return str(answer)
@@ -59,20 +121,7 @@ def askUserYN(message):
     return is_agree.lower() == "y" or is_agree == ""
 
 
-def convert(x: str = "") -> str:
-    x = str(x)
-    x = x.replace(".", " . ").replace(",", " , ").replace("(", " ( ")
-    x = x.replace(")", " ) ").replace('"', ' " ').replace(":", " : ")
-    return x.lower().replace("  ", " ").replace("  ", " ")
-
-
-def cleanScreen() -> None:
-    if os.name == "nt":
-        os.system("cls")
-    else:
-        os.system("clear")
-
-
+# sql defs
 def createSQLColumn(conn, col_name, col_type, col_status="NOT NULL", col_value="N/A"):
     try:
         conn.cursor().execute(
@@ -84,19 +133,7 @@ def createSQLColumn(conn, col_name, col_type, col_status="NOT NULL", col_value="
             )
         )
     except Exception as e:
-        printError("createSQLColumn", e)
-
-
-def printError(text, error, is_exit=True):
-    print(
-        "---------------------\n\tExpectation while {} \
-        \n\tError type: {}\n--------------------- \
-          \n\n{}".format(
-            text, type(error), error
-        )
-    )
-    if is_exit:
-        exit(0)
+        printError(createSQLColumn.__name__, e)
 
 
 def createSQLtable(connection):
@@ -111,7 +148,7 @@ def createSQLtable(connection):
         connection.cursor().execute(sql_create_table)
         connection.commit()
     except Exception as e:
-        printError("createSQLtabe", e)
+        printError(createSQLtable.__name__, e)
 
 
 def createOBJ(conn, sql, obj):
@@ -129,7 +166,7 @@ def createOBJ(conn, sql, obj):
             )
             createOBJ(conn, sql, obj)
     except Exception as e:
-        printError("createOBJ", e)
+        printError(createOBJ.__name__, e)
 
 
 def getSQLCursor(path):
@@ -137,49 +174,37 @@ def getSQLCursor(path):
         sqliteConnection = sqlite3.connect(path)
         print("Database created and Successfully Connected to SQLite")
     except sqlite3.Error as error:
-        printError("getSQLCursor", error)
+        printError(getSQLCursor.__name__, error)
     return sqliteConnection
 
 
-def checkLangFile(*args):
-    for target in args:
-        if os.path.exists(f"./cache/{target}.dic"):
-            continue
-        open(f"./cache/{target}.dic", "w").close()
-
-
-def loadDictionary(path):
-    try:
-        if os.stat(path).st_size == 0:
-            return {}
-        with open(path, "rb") as f:
-            return pickle.load(f)
-    except Exception as e:
-        printError("loadDictionary", e)
-
-
+# language utils
 def checkSpelling(text, dictionary) -> str:
+    printInfo(checkSpelling.__name__, multiprocessing.current_process().pid)
     try:
         words = text.split()
         outstr = ""
-        is_checked = isExistOnWiki(words)
-        for idx, is_check in enumerate(is_checked):
-            word = words[idx]
-            if word not in dictionary and not is_check and not word.isnumeric():
+        for idx, word in enumerate(words):
+            if (
+                word not in dictionary
+                and not word.isnumeric()
+                and not isExistOnWiki(word)
+                and not isExistOnWiki(words[idx - 1] + " " + word)
+            ):
                 raise ValueError(f"{word} not existed")
             outstr += f"{word} "
             if word.isalpha() and word not in dictionary:
-                dictionary[word] = 1
+                dictionary.insert(0, word)
         return outstr
     except ValueError:
-        if askUserYN(f"Add {word} to dictionary?"):
+        if not is_auto and askUserYN(f"Add {word} to dictionary?"):
             dictionary[word] = 1
             print(f"add {word} !")
             return checkSpelling(text, dictionary)
         else:
             return ""
     except Exception as e:
-        printError("checkSpelling", e)
+        printError(checkSpelling.__name__, e)
 
 
 def checkSpellingExecute(cmd):
@@ -187,7 +212,7 @@ def checkSpellingExecute(cmd):
 
 
 def checkSpellingPool(cmds):
-    pool = multiprocessing.Pool(processes=num_process)
+    pool = multiprocessing.pool.ThreadPool(processes=num_process)
     return pool.map(checkSpellingExecute, cmds)
 
 
@@ -205,20 +230,13 @@ if __name__ == "__main__":
     second_input_path = f"./data/train.{lang_target}"
     second_input_dump = open(f"./data/dump.{lang_target}", "a")
     while 1:
+        time_start = time.time()
         is_error = False
         is_agree = "!"
         add_gtrans = False
         add_dtrans = False
         first_input_file = open(first_input_path, "r")
         second_input_file = open(second_input_path, "r")
-        time_start = time.time()
-        first_input_sent = checkSpelling(
-            convert(first_input_file.readline().replace("\n", "")), first_dictionary
-        )
-        second_input_sent = checkSpelling(
-            convert(second_input_file.readline().replace("\n", "")), second_dictionary
-        )
-        """
         first_input_sent, second_input_sent = checkSpellingPool(
             (
                 [
@@ -231,11 +249,6 @@ if __name__ == "__main__":
                 ],
             )
         )
-        """
-        print(time.time() - time_start)
-
-        if not first_input_sent and not second_input_sent:
-            break
         if not first_input_sent or not second_input_sent:
             is_error = True
         else:
@@ -247,21 +260,23 @@ if __name__ == "__main__":
                     second_input_dtrans,
                 ) = checkSpellingPool(
                     (
-                        convert(gtrans(first_input_sent, lang_source, lang_target)),
-                        second_dictionary,
-                    ),
-                    (
-                        convert(gtrans(second_input_sent, lang_target, lang_source)),
-                        first_dictionary,
-                    ),
-                    (
-                        convert(dtrans(first_input_sent, lang_source, lang_target)),
-                        second_dictionary,
-                    ),
-                    (
-                        convert(dtrans(second_input_sent, lang_target, lang_source)),
-                        first_dictionary,
-                    ),
+                        (
+                            convert(gtrans(first_input_sent, lang_source, lang_target)),
+                            second_dictionary,
+                        ),
+                        (
+                            convert(gtrans(second_input_sent, lang_target, lang_source)),
+                            first_dictionary,
+                        ),
+                        (
+                            convert(dtrans(first_input_sent, lang_source, lang_target)),
+                            second_dictionary,
+                        ),
+                        (
+                            convert(dtrans(second_input_sent, lang_target, lang_source)),
+                            first_dictionary,
+                        ),
+                    )
                 )
             except Exception as e:
                 is_error = True
@@ -283,6 +298,8 @@ if __name__ == "__main__":
                     second_input_trans = second_input_gtrans
                     fir_to_sec_ratio = fir_to_sec_gratio
                     sec_to_fir_ratio = sec_to_fir_gratio
+                    add_gtrans = True
+                    add_dtrans = False
                     if abs(fir_to_sec_ratio - sec_to_fir_ratio) < abs(
                         fir_to_sec_dratio - sec_to_fir_dratio
                     ):
@@ -290,15 +307,20 @@ if __name__ == "__main__":
                         second_input_trans = second_input_dtrans
                         fir_to_sec_ratio = fir_to_sec_dratio
                         sec_to_fir_ratio = sec_to_fir_dratio
-                    cleanScreen()
-                    print(
-                        f"\t{lang_source} input (acc: {fir_to_sec_ratio})\n\t\t- {first_input_sent}\n\t\t- {second_input_trans}\n"
-                    )
-                    print(
-                        f"\t{lang_target} input (acc: {sec_to_fir_ratio})\n\t\t- {second_input_sent}\n\t\t- {first_input_trans}\n"
-                    )
-                    is_agree = askUserStr("\tAdd to database? (Y/n)")
-                elif not add_dtrans:
+                        add_dtrans = True
+                        add_gtrans = False
+                    if not is_auto:
+                        cleanScreen()
+                        print(
+                            f"\t{lang_source} input (acc: {fir_to_sec_ratio})\n\t\t- {first_input_sent}\n\t\t- {second_input_trans}\n"
+                        )
+                        print(
+                            f"\t{lang_target} input (acc: {sec_to_fir_ratio})\n\t\t- {second_input_sent}\n\t\t- {first_input_trans}\n"
+                        )
+                        is_agree = askUserStr("\tAdd to database? (Y/n)")
+                    else:
+                        is_error = True
+                elif not add_dtrans and not is_auto:
                     cleanScreen()
                     print(
                         f"\t{lang_source} input (acc: {fir_to_sec_dratio})\n\t\t- {first_input_sent}\n\t\t- {second_input_dtrans}\n"
@@ -308,7 +330,7 @@ if __name__ == "__main__":
                     )
                     is_add = askUserYN("\tAdd to database?")
                     add_dtrans = is_add.lower() == "y" or is_add == ""
-                elif not add_gtrans:
+                elif not add_gtrans and not is_auto:
                     cleanScreen()
                     print(
                         f"\t{lang_source} input (acc: {fir_to_sec_gratio})\n\t\t- {first_input_sent}\n\t\t- {second_input_gtrans}\n"
@@ -350,7 +372,6 @@ if __name__ == "__main__":
                     table_command.format(table_name),
                     (second_input_gtrans, second_input_sent, 1),
                 )
-            print(first_input_sent, second_input_sent)
         elif is_agree == "exit":
             break
         else:
@@ -364,9 +385,9 @@ if __name__ == "__main__":
             file.writelines(saveIN[1:])
         with open(second_input_path, "w") as file:
             file.writelines(saveOU[1:])
+        print(f"\t({(time.time()-time_start):0,.2f}) >> ", first_input_sent, "|", second_input_sent)
     first_input_dump.close()
     second_input_dump.close()
-    with open(first_dictionary_path, "wb") as f:
-        pickle.dump(first_dictionary, f)
-    with open(second_dictionary_path, "wb") as f:
-        pickle.dump(second_dictionary, f)
+    saveDictionary(first_dictionary_path, first_dictionary)
+    saveDictionary(second_dictionary_path, second_dictionary)
+    
