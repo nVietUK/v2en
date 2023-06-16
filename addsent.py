@@ -62,6 +62,8 @@ def dtrans(x, source, target):
 def diffratio(x, y):
     return SequenceMatcher(None, x, y).ratio()
 
+def isEmpty(path):
+    return os.stat(path).st_size == 0
 
 def convert(x: str) -> str:
     x = x.replace("“", " “ ").replace("”", " ” ").replace("’", " ’ ")
@@ -100,7 +102,7 @@ def checkLangFile(*args):
 def loadDictionary(path):
     try:
         if os.stat(path).st_size == 0:
-            return list()
+            return []
         with open(path, "r") as f:
             return f.read().splitlines(True)
     except Exception as e:
@@ -110,7 +112,8 @@ def loadDictionary(path):
 def saveDictionary(path, dictionary):
     try:
         with open(path, "w") as f:
-            f.writelines(dictionary)
+            for e in dictionary:
+                f.write(e+'\n')
     except Exception as e:
         printError(saveDictionary.__name__, e)
 
@@ -214,7 +217,7 @@ def checkSpelling(text, dictionary) -> str:
             print(f"add {word} !")
             return checkSpelling(text, dictionary)
         else:
-            printError(f"word error is {word}", "", False)
+            printError(f"add word {word}", "", False)
             return ""
     except Exception as e:
         printError(checkSpelling.__name__, e)
@@ -249,6 +252,9 @@ if __name__ == "__main__":
         is_add = False
         add_gtrans = False
         add_dtrans = False
+        if isEmpty(first_input_path) or isEmpty(second_input_path):
+            print("Done!")
+            exit()
         first_input_file = open(first_input_path, "r")
         second_input_file = open(second_input_path, "r")
         first_input_sent, second_input_sent = checkSpellingPool(
