@@ -66,6 +66,10 @@ def isEmpty(path):
     return os.stat(path).st_size == 0
 
 def convert(x: str) -> str:
+    # fix bad data
+    if "apos" in x or "quot" in x:
+        return ""
+
     x = x.replace("“", " “ ").replace("”", " ” ").replace("’", " ’ ")
     for punc in string.punctuation:
         x = x.replace(punc, f" {punc} ")
@@ -219,7 +223,7 @@ def checkSpelling(text, dictionary, lang) -> str:
         else:
             printError(f"add word {word}", "", False)
             with open(f"./cache/{lang}.err", 'a') as f:
-                f.write(word)
+                f.write(word+'\n')
             return ""
     except Exception as e:
         printError(checkSpelling.__name__, e)
