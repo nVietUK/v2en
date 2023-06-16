@@ -1,5 +1,6 @@
 import os, yaml, sqlite3, requests, pickle
 from difflib import SequenceMatcher
+from multiprocessing import pool
 from deep_translator import GoogleTranslator, MyMemoryTranslator
 
 with open("config.yml", "r") as ymlfile:
@@ -16,29 +17,48 @@ is_auto = False
 table_name = "Translation"
 
 
-def convert(x):
-    x = x.replace(".", " . ").replace(",", " , ").replace("(", " ( ")
-    x = x.replace(")", " ) ").replace('"', ' " ').replace(":", " : ")
-    return x.lower().replace("  ", " ").replace("  ", " ")
-
-
-def cleanScreen():
-    if os.name == "nt":
-        os.system("cls")
-    else:
-        os.system("clear")
-
-
-def diffratio(x, y):
-    return SequenceMatcher(None, x, y).ratio()
-
-
 def gtrans(x, source, target):
     return GoogleTranslator(source=source, target=target).translate(x)
 
 
 def dtrans(x, source, target):
     return MyMemoryTranslator(source=source, target=target).translate(x)
+
+
+def diffratio(x, y):
+    return SequenceMatcher(None, x, y).ratio()
+
+
+def isExistOnWiki(word):
+    return requests.get(f"https://en.wiktionary.org/wiki/{word}").status_code == 200
+
+
+def askUserStr(name_value):
+    answer = input(f"\t{name_value} >> ")
+    return str(answer)
+
+
+def askUserInt(name_value):
+    answer = input(f"\t{name_value} >> ")
+    return int(answer)
+
+
+def askUserYN(message):
+    is_agree = input(f"{message} (Y/n) ")
+    return is_agree.lower() == "y" or is_agree == ""
+
+
+def convert(x):
+    x = x.replace(".", " . ").replace(",", " , ").replace("(", " ( ")
+    x = x.replace(")", " ) ").replace('"', ' " ').replace(":", " : ")
+    return x.lower().replace("  ", " ").replace("  ", " ")
+
+
+def cleanScreen() -> None:
+    if os.name == "nt":
+        os.system("cls")
+    else:
+        os.system("clear")
 
 
 def createSQLColumn(conn, col_name, col_type, col_status="NOT NULL", col_value="N/A"):
@@ -82,16 +102,6 @@ def createSQLtable(connection):
         printError("createSQLtabe", e)
 
 
-def askUserStr(name_value):
-    answer = input(f"\t{name_value} >> ")
-    return str(answer)
-
-
-def askUserInt(name_value):
-    answer = input(f"\t{name_value} >> ")
-    return int(answer)
-
-
 def createOBJ(conn, sql, obj):
     try:
         conn.cursor().execute(sql, obj)
@@ -126,16 +136,17 @@ def checkLangFile(*args):
         open(f"./cache/{target}.dic", "w").close()
 
 
-def isExistOnWiki(word):
-    return requests.get(f"https://en.wiktionary.org/wiki/{word}").status_code == 200
+def loadDictionary(path):
+    try:
+        if os.stat(path).st_size == 0:
+            return {}
+        with open(path, "rb") as f:
+            return pickle.load(f)
+    except Exception as e:
+        printError("loadDictionary", e)
 
 
-def askUserYN(message):
-    is_agree = input(f"{message} (Y/n) ")
-    return is_agree.lower() == "y" or is_agree == ""
-
-
-def checkSpelling(text, dictionary):
+def checkSpelling(text, dictionary) -> str:
     try:
         words = text.split()
         outstr = ""
@@ -151,19 +162,10 @@ def checkSpelling(text, dictionary):
             dictionary[word] = 1
             print(f"add {word} !")
             return checkSpelling(text, dictionary)
+        else:
+            return ""
     except Exception as e:
         printError("checkSpelling", e)
-
-
-def loadDictionary(path):
-    try:
-        if os.stat(path).st_size == 0:
-            return {}
-        with open(path, "rb") as f:
-            output = pickle.load(f)
-        return output
-    except Exception as e:
-        printError("loadDictionary", e)
 
 
 if __name__ == "__main__":
@@ -171,14 +173,14 @@ if __name__ == "__main__":
     createSQLtable(sql_connection)
     checkLangFile(lang_source, lang_target)
 
-    first_dictionary_path = "./cache/{}.dic".format(lang_source)
-    second_dictionary_path = "./cache/{}.dic".format(lang_target)
+    first_dictionary_path = f"./cache/{lang_source}.dic"
+    second_dictionary_path = f"./cache/{lang_target}.dic"
     first_dictionary = loadDictionary(first_dictionary_path)
     second_dictionary = loadDictionary(second_dictionary_path)
-    first_input_path = "./data/train.{}".format(lang_source)
-    first_input_dump = open("./data/dump.{}".format(lang_source), "a")
-    second_input_path = "./data/train.{}".format(lang_target)
-    second_input_dump = open("./data/dump.{}".format(lang_target), "a")
+    first_input_path = f"./data/train.{lang_source}"
+    first_input_dump = open(f"./data/dump.{lang_source}", "a")
+    second_input_path = f"./data/train.{lang_target}"
+    second_input_dump = open(f"./data/dump.{lang_target}", "a")
     while 1:
         is_error = False
         is_agree = "!"
@@ -186,16 +188,22 @@ if __name__ == "__main__":
         add_dtrans = False
         first_input_file = open(first_input_path, "r")
         second_input_file = open(second_input_path, "r")
-        first_input_sent = convert(first_input_file.readline().replace("\n", ""))
-        second_input_sent = convert(second_input_file.readline().replace("\n", ""))
-        if not first_input_sent or not second_input_sent:
+        first_input_sent = checkSpelling(
+            convert(first_input_file.readline().replace("\n", "")), first_dictionary
+        )
+        second_input_sent = checkSpelling(
+            convert(second_input_file.readline().replace("\n", "")), second_dictionary
+        )
+        if not first_input_sent and not second_input_sent:
             break
-        if first_input_sent.find("&") != -1 or second_input_sent.find("&") != -1:
+        if (
+            first_input_sent.find("&") != -1
+            or second_input_sent.find("&") != -1
+            or not first_input_sent
+            or not second_input_sent
+        ):
             is_error = True
         else:
-            first_input_sent = checkSpelling(first_input_sent, first_dictionary)
-            second_input_sent = checkSpelling(second_input_sent, second_dictionary)
-
             try:
                 first_input_gtrans = checkSpelling(
                     convert(gtrans(first_input_sent, lang_source, lang_target)),
@@ -239,7 +247,7 @@ if __name__ == "__main__":
                     second_input_trans = second_input_gtrans
                     fir_to_sec_ratio = fir_to_sec_gratio
                     sec_to_fir_ratio = sec_to_fir_gratio
-                    if abs(fir_to_sec_gratio - sec_to_fir_gratio) < abs(
+                    if abs(fir_to_sec_ratio - sec_to_fir_ratio) < abs(
                         fir_to_sec_dratio - sec_to_fir_dratio
                     ):
                         first_input_trans = first_input_dtrans
@@ -248,122 +256,70 @@ if __name__ == "__main__":
                         sec_to_fir_ratio = sec_to_fir_dratio
                     cleanScreen()
                     print(
-                        "\t{} input (acc: {})\n\t\t- {}\n\t\t- {}\n".format(
-                            lang_source,
-                            fir_to_sec_ratio,
-                            first_input_sent,
-                            second_input_trans,
-                        )
+                        f"\t{lang_source} input (acc: {fir_to_sec_ratio})\n\t\t- {first_input_sent}\n\t\t- {second_input_trans}\n"
                     )
                     print(
-                        "\t{} input (acc: {})\n\t\t- {}\n\t\t- {}\n".format(
-                            lang_target,
-                            sec_to_fir_ratio,
-                            second_input_sent,
-                            first_input_trans,
-                        )
+                        f"\t{lang_target} input (acc: {sec_to_fir_ratio})\n\t\t- {second_input_sent}\n\t\t- {first_input_trans}\n"
                     )
                     is_agree = askUserStr("\tAdd to database? (Y/n)")
                 elif not add_dtrans:
                     cleanScreen()
                     print(
-                        "\t{} input (acc: {})\n\t\t- {}\n\t\t- {}\n".format(
-                            lang_source,
-                            fir_to_sec_dratio,
-                            first_input_sent,
-                            second_input_dtrans,
-                        )
+                        f"\t{lang_source} input (acc: {fir_to_sec_dratio})\n\t\t- {first_input_sent}\n\t\t- {second_input_dtrans}\n"
                     )
                     print(
-                        "\t{} input (acc: {})\n\t\t- {}\n\t\t- {}\n".format(
-                            lang_target,
-                            sec_to_fir_dratio,
-                            second_input_sent,
-                            first_input_dtrans,
-                        )
+                        f"\t{lang_target} input (acc: {sec_to_fir_dratio})\n\t\t- {second_input_sent}\n\t\t- {first_input_dtrans}\n"
                     )
                     is_add = askUserYN("\tAdd to database?")
                     add_dtrans = is_add.lower() == "y" or is_add == ""
                 elif not add_gtrans:
                     cleanScreen()
                     print(
-                        "\t{} input (acc: {})\n\t\t- {}\n\t\t- {}\n".format(
-                            lang_source,
-                            fir_to_sec_gratio,
-                            first_input_sent,
-                            second_input_gtrans,
-                        )
+                        f"\t{lang_source} input (acc: {fir_to_sec_gratio})\n\t\t- {first_input_sent}\n\t\t- {second_input_gtrans}\n"
                     )
                     print(
-                        "\t{} input (acc: {})\n\t\t- {}\n\t\t- {}\n".format(
-                            lang_target,
-                            sec_to_fir_gratio,
-                            second_input_sent,
-                            first_input_gtrans,
-                        )
+                        f"\t{lang_target} input (acc: {sec_to_fir_gratio})\n\t\t- {second_input_sent}\n\t\t- {first_input_gtrans}\n"
                     )
                     is_add = askUserYN("\tAdd to database?")
                     add_gtrans = is_add.lower() == "y" or is_add == ""
         if (is_agree.lower() == "y" or is_agree == "") and not is_error:
-            createOBJ(
-                sql_connection,
-                """
+            table_command = """
                 INSERT INTO {}(Source, Target, Verify)
                 VALUES(?,?,?)
-            """.format(
-                    table_name
-                ),
+            """
+            createOBJ(
+                sql_connection,
+                table_command.format(table_name),
                 (first_input_sent, second_input_sent, 1),
             )
             if add_dtrans:
                 createOBJ(
                     sql_connection,
-                    """
-                    INSERT INTO {}(Source, Target, Verify)
-                    VALUES(?,?,?)
-                """.format(
-                        table_name
-                    ),
+                    table_command.format(table_name),
                     (first_input_sent, first_input_dtrans, 1),
                 )
                 createOBJ(
                     sql_connection,
-                    """
-                    INSERT INTO {}(Source, Target, Verify)
-                    VALUES(?,?,?)
-                """.format(
-                        table_name
-                    ),
+                    table_command.format(table_name),
                     (second_input_dtrans, second_input_sent, 1),
                 )
             if add_gtrans:
                 createOBJ(
                     sql_connection,
-                    """
-                    INSERT INTO {}(Source, Target, Verify)
-                    VALUES(?,?,?)
-                """.format(
-                        table_name
-                    ),
+                    table_command.format(table_name),
                     (first_input_sent, first_input_gtrans, 1),
                 )
                 createOBJ(
                     sql_connection,
-                    """
-                    INSERT INTO {}(Source, Target, Verify)
-                    VALUES(?,?,?)
-                """.format(
-                        table_name
-                    ),
+                    table_command.format(table_name),
                     (second_input_gtrans, second_input_sent, 1),
                 )
             print(first_input_sent, second_input_sent)
         elif is_agree == "exit":
             break
         else:
-            first_input_dump.write("\n{}".format(convert(first_input_sent)))
-            second_input_dump.write("\n{}".format(convert(second_input_sent)))
-
+            first_input_dump.write(f"\n{convert(first_input_sent)}")
+            second_input_dump.write(f"\n{convert(second_input_sent)}")
         saveIN = first_input_file.read().splitlines(True)
         saveOU = second_input_file.read().splitlines(True)
         first_input_file.close()
