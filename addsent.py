@@ -14,12 +14,8 @@ with open("config.yml", "r") as ymlfile:
     cfg = yaml.safe_load(ymlfile)
 target = cfg["v2en"]["target"]
 lang_source = target[:2]
-debug = False
+debug = True
 lang_target = target[-2:]
-"""
-input_path = './data/{}.txt.temp'.format(target[:2])
-output_path = './data/{}.txt.temp'.format(target[-2:])
-"""
 accecpt_percentage = 0.65
 is_auto = True
 table_name = "Translation"
@@ -40,7 +36,8 @@ def printError(text, error, is_exit=True):
 
 
 def printInfo(name, pid):
-    if not debug: return
+    if not debug:
+        return
     print(f"Dive into {name} with pid id: {pid}")
 
 
@@ -66,7 +63,10 @@ def convert(x: str) -> str:
 
 def isExistOnWiki(word: str) -> bool:
     printInfo(isExistOnWiki.__name__, multiprocessing.current_process().name)
-    return requests.get(f"https://en.wiktionary.org/wiki/{word}").status_code == 200
+    return (
+        requests.get(f"https://en.wiktionary.org/wiki/{word}").status_code == 200
+        or requests.get(f"https://en.wikipedia.org/wiki/{word}").status_code == 200
+    )
 
 
 def isExistOnWikiPool(cmds):
@@ -104,6 +104,7 @@ def saveDictionary(path, dictionary):
             f.writelines(dictionary)
     except Exception as e:
         printError(saveDictionary.__name__, e)
+
 
 # ask user defs
 def askUserStr(name_value):
@@ -186,13 +187,14 @@ def checkSpelling(text, dictionary) -> str:
         outstr = ""
         for idx, word in enumerate(words):
             if (
-                word not in dictionary
-                and not word.isnumeric()
-                and not isExistOnWiki(word)
-                and not isExistOnWiki(words[idx - 1] + " " + word)
+                word in dictionary
+                or word.isnumeric()
+                or isExistOnWiki(word)
+                or isExistOnWiki(f"{words[idx - 1]} {word}")
             ):
+                outstr += f"{word} "
+            else:
                 raise ValueError(f"{word} not existed")
-            outstr += f"{word} "
             if word.isalpha() and word not in dictionary:
                 dictionary.insert(0, word)
         return outstr
@@ -202,6 +204,7 @@ def checkSpelling(text, dictionary) -> str:
             print(f"add {word} !")
             return checkSpelling(text, dictionary)
         else:
+            printError(f"word error is {word}", "", False)
             return ""
     except Exception as e:
         printError(checkSpelling.__name__, e)
@@ -225,14 +228,15 @@ if __name__ == "__main__":
     second_dictionary_path = f"./cache/{lang_target}.dic"
     first_dictionary = loadDictionary(first_dictionary_path)
     second_dictionary = loadDictionary(second_dictionary_path)
-    first_input_path = f"./data/train.{lang_source}"
+    first_input_path = f"./data/{lang_source}.txt"
     first_input_dump = open(f"./data/dump.{lang_source}", "a")
-    second_input_path = f"./data/train.{lang_target}"
+    second_input_path = f"./data/{lang_target}.txt"
     second_input_dump = open(f"./data/dump.{lang_target}", "a")
     while 1:
         time_start = time.time()
         is_error = False
         is_agree = "!"
+        is_add = False
         add_gtrans = False
         add_dtrans = False
         first_input_file = open(first_input_path, "r")
@@ -372,6 +376,7 @@ if __name__ == "__main__":
                     table_command.format(table_name),
                     (second_input_gtrans, second_input_sent, 1),
                 )
+            is_add = True
         elif is_agree == "exit":
             break
         else:
@@ -385,9 +390,13 @@ if __name__ == "__main__":
             file.writelines(saveIN[1:])
         with open(second_input_path, "w") as file:
             file.writelines(saveOU[1:])
-        print(f"\t({(time.time()-time_start):0,.2f}) >> ", first_input_sent, "|", second_input_sent)
+        print(
+            f"\t({(time.time()-time_start):0,.2f}) ({is_add}) >> ",
+            first_input_sent,
+            "|",
+            second_input_sent,
+        )
     first_input_dump.close()
     second_input_dump.close()
     saveDictionary(first_dictionary_path, first_dictionary)
     saveDictionary(second_dictionary_path, second_dictionary)
-    

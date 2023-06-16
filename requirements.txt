@@ -1,4 +1,2 @@
-pymysql
 deep-translator
 pyyaml
-symspellpy
