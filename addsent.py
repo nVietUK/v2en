@@ -2,19 +2,17 @@ import os
 import yaml
 import sqlite3
 import requests
-import pickle
 import multiprocessing
 import multiprocessing.pool
 import time
-import ast
 from difflib import SequenceMatcher
-from deep_translator import GoogleTranslator, MyMemoryTranslator
+import deep_translator
 
 with open("config.yml", "r") as ymlfile:
     cfg = yaml.safe_load(ymlfile)
 target = cfg["v2en"]["target"]
 lang_source = target[:2]
-debug = True
+debug = False
 lang_target = target[-2:]
 accecpt_percentage = 0.65
 is_auto = True
@@ -43,11 +41,12 @@ def printInfo(name, pid):
 
 # translate def
 def gtrans(x: str, source: str, target: str) -> str:
-    return GoogleTranslator(source=source, target=target).translate(x)
+    return deep_translator.GoogleTranslator(source=source, target=target).translate(x)
+
 
 
 def dtrans(x, source, target):
-    return MyMemoryTranslator(source=source, target=target).translate(x)
+    return deep_translator.MyMemoryTranslator(source=source, target=target).translate(x)
 
 
 # utils
@@ -56,8 +55,9 @@ def diffratio(x, y):
 
 
 def convert(x: str) -> str:
-    x = x.replace(".", " . ").replace(",", " , ").replace("(", " ( ")
-    x = x.replace(")", " ) ").replace('"', ' " ').replace(":", " : ")
+    x = x.replace(".", " . ").replace(",", " , ").replace("(", " ( ").replace("“", " “ ")
+    x = x.replace(")", " ) ").replace('"', ' " ').replace(":", " : ").replace("'", " ' ")
+    x = x.replace("”", " ” ").replace("’", " ’ ").replace("-", " - ")
     return x.lower().replace("  ", " ").replace("  ", " ")
 
 
@@ -190,7 +190,8 @@ def checkSpelling(text, dictionary) -> str:
                 word in dictionary
                 or word.isnumeric()
                 or isExistOnWiki(word)
-                or isExistOnWiki(f"{words[idx - 1]} {word}")
+                or isExistOnWiki(f"{words[idx-1]} {word}")
+                or isExistOnWiki(f"{word} {words[idx+1]}")
             ):
                 outstr += f"{word} "
             else:
@@ -380,8 +381,8 @@ if __name__ == "__main__":
         elif is_agree == "exit":
             break
         else:
-            first_input_dump.write(f"\n{convert(first_input_sent)}")
-            second_input_dump.write(f"\n{convert(second_input_sent)}")
+            first_input_dump.write(f"\n{(first_input_sent)}")
+            second_input_dump.write(f"\n{(second_input_sent)}")
         saveIN = first_input_file.read().splitlines(True)
         saveOU = second_input_file.read().splitlines(True)
         first_input_file.close()
