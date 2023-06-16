@@ -46,16 +46,15 @@ def gtrans(x: str, source: str, target: str) -> str:
         return deep_translator.GoogleTranslator(source=source, target=target).translate(x)
     except Exception as e:
         printError(gtrans.__name__, e, False)
+        return ""
 
 
 def dtrans(x, source, target):
-    return ""
     try:
         return deep_translator.MyMemoryTranslator(source=source, target=target).translate(x)
-    except deep_translator.exceptions.TooManyRequests:
-        return ""
     except Exception as e:
         printError(dtrans.__name__, e, False)
+        return ""
 
 
 # utils
