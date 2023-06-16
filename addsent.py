@@ -1,6 +1,11 @@
-import os, yaml, sqlite3, requests, pickle
+import os
+import yaml
+import sqlite3
+import requests
+import pickle
+import multiprocessing
+import time
 from difflib import SequenceMatcher
-from multiprocessing import pool
 from deep_translator import GoogleTranslator, MyMemoryTranslator
 
 with open("config.yml", "r") as ymlfile:
@@ -15,9 +20,10 @@ output_path = './data/{}.txt.temp'.format(target[-2:])
 accecpt_percentage = 0.65
 is_auto = False
 table_name = "Translation"
+num_process = 6
 
 
-def gtrans(x, source, target):
+def gtrans(x: str, source: str, target: str) -> str:
     return GoogleTranslator(source=source, target=target).translate(x)
 
 
@@ -29,8 +35,13 @@ def diffratio(x, y):
     return SequenceMatcher(None, x, y).ratio()
 
 
-def isExistOnWiki(word):
+def isExistOnWikiExecute(word: str) -> bool:
     return requests.get(f"https://en.wiktionary.org/wiki/{word}").status_code == 200
+
+
+def isExistOnWiki(words: tuple) -> bool:
+    pool = multiprocessing.Pool(processes=num_process)
+    return pool.map(isExistOnWikiExecute, words)
 
 
 def askUserStr(name_value):
@@ -48,7 +59,8 @@ def askUserYN(message):
     return is_agree.lower() == "y" or is_agree == ""
 
 
-def convert(x):
+def convert(x: str = "") -> str:
+    x = str(x)
     x = x.replace(".", " . ").replace(",", " , ").replace("(", " ( ")
     x = x.replace(")", " ) ").replace('"', ' " ').replace(":", " : ")
     return x.lower().replace("  ", " ").replace("  ", " ")
@@ -75,7 +87,7 @@ def createSQLColumn(conn, col_name, col_type, col_status="NOT NULL", col_value="
         printError("createSQLColumn", e)
 
 
-def printError(text, error, is_exit):
+def printError(text, error, is_exit=True):
     print(
         "---------------------\n\tExpectation while {} \
         \n\tError type: {}\n--------------------- \
@@ -150,8 +162,10 @@ def checkSpelling(text, dictionary) -> str:
     try:
         words = text.split()
         outstr = ""
-        for word in words:
-            if word not in dictionary and not isExistOnWiki(word):
+        is_checked = isExistOnWiki(words)
+        for idx, is_check in enumerate(is_checked):
+            word = words[idx]
+            if word not in dictionary and not is_check and not word.isnumeric():
                 raise ValueError(f"{word} not existed")
             outstr += f"{word} "
             if word.isalpha() and word not in dictionary:
@@ -166,6 +180,15 @@ def checkSpelling(text, dictionary) -> str:
             return ""
     except Exception as e:
         printError("checkSpelling", e)
+
+
+def checkSpellingExecute(cmd):
+    return checkSpelling(cmd[0], cmd[1])
+
+
+def checkSpellingPool(cmds):
+    pool = multiprocessing.Pool(processes=num_process)
+    return pool.map(checkSpellingExecute, cmds)
 
 
 if __name__ == "__main__":
@@ -188,38 +211,57 @@ if __name__ == "__main__":
         add_dtrans = False
         first_input_file = open(first_input_path, "r")
         second_input_file = open(second_input_path, "r")
+        time_start = time.time()
         first_input_sent = checkSpelling(
             convert(first_input_file.readline().replace("\n", "")), first_dictionary
         )
         second_input_sent = checkSpelling(
             convert(second_input_file.readline().replace("\n", "")), second_dictionary
         )
+        """
+        first_input_sent, second_input_sent = checkSpellingPool(
+            (
+                [
+                    convert(str(first_input_file.readline()).replace("\n", "")),
+                    first_dictionary,
+                ],
+                [
+                    convert(str(second_input_file.readline()).replace("\n", "")),
+                    second_dictionary,
+                ],
+            )
+        )
+        """
+        print(time.time() - time_start)
+
         if not first_input_sent and not second_input_sent:
             break
-        if (
-            first_input_sent.find("&") != -1
-            or second_input_sent.find("&") != -1
-            or not first_input_sent
-            or not second_input_sent
-        ):
+        if not first_input_sent or not second_input_sent:
             is_error = True
         else:
             try:
-                first_input_gtrans = checkSpelling(
-                    convert(gtrans(first_input_sent, lang_source, lang_target)),
-                    second_dictionary,
-                )
-                second_input_gtrans = checkSpelling(
-                    convert(gtrans(second_input_sent, lang_target, lang_source)),
-                    first_dictionary,
-                )
-                first_input_dtrans = checkSpelling(
-                    convert(dtrans(first_input_sent, lang_source, lang_target)),
-                    second_dictionary,
-                )
-                second_input_dtrans = checkSpelling(
-                    convert(dtrans(second_input_sent, lang_target, lang_source)),
-                    first_dictionary,
+                (
+                    first_input_gtrans,
+                    second_input_gtrans,
+                    first_input_dtrans,
+                    second_input_dtrans,
+                ) = checkSpellingPool(
+                    (
+                        convert(gtrans(first_input_sent, lang_source, lang_target)),
+                        second_dictionary,
+                    ),
+                    (
+                        convert(gtrans(second_input_sent, lang_target, lang_source)),
+                        first_dictionary,
+                    ),
+                    (
+                        convert(dtrans(first_input_sent, lang_source, lang_target)),
+                        second_dictionary,
+                    ),
+                    (
+                        convert(dtrans(second_input_sent, lang_target, lang_source)),
+                        first_dictionary,
+                    ),
                 )
             except Exception as e:
                 is_error = True
@@ -229,16 +271,10 @@ if __name__ == "__main__":
                 sec_to_fir_gratio = diffratio(second_input_sent, first_input_gtrans)
                 fir_to_sec_dratio = diffratio(first_input_sent, second_input_dtrans)
                 sec_to_fir_dratio = diffratio(second_input_sent, first_input_dtrans)
-                if (
-                    fir_to_sec_gratio > accecpt_percentage
-                    or sec_to_fir_gratio > accecpt_percentage
-                ):
+                if fir_to_sec_gratio > accecpt_percentage or sec_to_fir_gratio > accecpt_percentage:
                     is_agree = ""
                     add_gtrans = True
-                if (
-                    fir_to_sec_dratio > accecpt_percentage
-                    or sec_to_fir_dratio > accecpt_percentage
-                ):
+                if fir_to_sec_dratio > accecpt_percentage or sec_to_fir_dratio > accecpt_percentage:
                     is_agree = ""
                     add_dtrans = True
 
