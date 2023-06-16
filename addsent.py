@@ -8,6 +8,7 @@ import time
 from difflib import SequenceMatcher
 import deep_translator
 import string
+import translators
 
 with open("config.yml", "r") as ymlfile:
     cfg = yaml.safe_load(ymlfile)
@@ -15,10 +16,10 @@ target = cfg["v2en"]["target"]
 first_input_lang = target[:2]
 debug = False
 second_input_lang = target[-2:]
-accecpt_percentage = 0.65
+accecpt_percentage = 0.7
 is_auto = True
 table_name = "Translation"
-num_process = 6
+num_process = 15
 
 
 # debug def
@@ -51,7 +52,8 @@ def gtrans(x: str, source: str, target: str) -> str:
 
 def dtrans(x, source, target):
     try:
-        return deep_translator.MyMemoryTranslator(source=source, target=target).translate(x)
+#        return deep_translator.MyMemoryTranslator(source=source, target=target).translate(x)
+        return translators.translate_text(x, from_language=source, to_language=target)
     except Exception as e:
         printError(dtrans.__name__, e, False)
         return ""
