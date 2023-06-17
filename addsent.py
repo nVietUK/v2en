@@ -9,6 +9,8 @@ from difflib import SequenceMatcher
 import deep_translator
 import string
 import translators
+from html.parser import HTMLParser
+import langcodes
 
 with open("config.yml", "r") as ymlfile:
     cfg = yaml.safe_load(ymlfile)
@@ -117,10 +119,28 @@ def convert(x: str) -> str:
 
 
 def isExistOnWiki(word: str, lang: str) -> bool:
+    display_name = langcodes.Language.make(language=lang).display_name()
+
+    class LanguageParser(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.isExist = False
+
+        def handle_starttag(self, tag, attrs):
+            if tag == "a":
+                for attr in attrs:
+                    if attr[0] == "href" and f"#{display_name}" == attr[1]:
+                        self.isExist = True
+            if tag == "span":
+                for attr in attrs:
+                    if attr[0] == "id" and attr[1] == display_name:
+                        self.isExist = True
+
     printInfo(isExistOnWiki.__name__, multiprocessing.current_process().name)
-    return requests.get(
-        f"https://{lang}.wiktionary.org/wiki/{word}"
-    ).status_code == 200 and deep_translator.single_detection(word, cfg["DetectLang"]["APIkey"]) == lang
+    response = requests.get(f"https://en.wiktionary.org/wiki/{word}")
+    parser = LanguageParser()
+    parser.feed(response.text)
+    return parser.isExist
 
 
 def cleanScreen() -> None:
@@ -248,6 +268,7 @@ def checkSpelling(text, dictionary, lang) -> str:
             if (
                 word in dictionary
                 or word.isnumeric()
+                or word in string.punctuation
                 or isExistOnWiki(word, lang)
                 or isExistOnWiki(f"{words[idx-1]} {word}", lang)
                 or (idx + 1 < len(words) and isExistOnWiki(f"{word} {words[idx+1]}", lang))
@@ -387,7 +408,10 @@ if __name__ == "__main__":
             with open(second_path, "r") as second_file:
                 saveIN = first_file.read().splitlines(True)
                 saveOU = second_file.read().splitlines(True)
-                for e in addSentPool([saveIN[idx], saveOU[idx]] for idx in range(num_sent)):
+                for e in addSentPool(
+                    [saveIN[idx], saveOU[idx]]
+                    for idx in range(num_sent if len(saveIN) > num_sent else len(saveIN))
+                ):
                     if e[0] != "" and e[1] != "":
                         first_dump_sent.append(e[0]), second_dump_sent.append(e[1])
                     cmds.extend(i for i in e[2] if len(i) == 3)
