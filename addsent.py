@@ -23,8 +23,8 @@ is_auto = True
 table_name = "Translation"
 first_dictionary_path = f"./cache/{first_lang}.dic"
 second_dictionary_path = f"./cache/{second_lang}.dic"
-num_process = 14
-num_sent = 18
+num_process = 70
+num_sent = 20
 """
     translate service:
     - google
@@ -109,7 +109,7 @@ def isEmpty(path):
 
 def convert(x: str) -> str:
     # fix bad data
-    if "apos" in x or "quot" in x:
+    if "apos" in x or "quot" in x or "amp" in x:
         return ""
 
     x = x.replace("“", " “ ").replace("”", " ” ").replace("’", " ’ ")
