@@ -20,7 +20,17 @@ accept_percentage = 0.65
 is_auto = True
 table_name = "Translation"
 num_process = 15
-translators_target = ["google", "bing"]
+"""
+    translate service:
+    - google
+    - bing
+    - yandex
+    - alibaba
+    - youdao
+    - sogou
+    - argox
+"""
+translators_target = ["google", "yandex", "alibaba", , "youdao", "sogou", "argox"]
 
 
 # debug def
@@ -58,7 +68,7 @@ def translatorsTrans(x, source, target, host):
         )
     except Exception as e:
         printError(translatorsTrans.__name__, e, False)
-        return ""
+        return deepTransGoogle(x, source, target)
 
 
 def translatorsTransExecute(cmd):
