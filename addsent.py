@@ -19,7 +19,10 @@ second_lang = target[-2:]
 accept_percentage = 0.65
 is_auto = True
 table_name = "Translation"
+first_dictionary_path = f"./cache/{first_lang}.dic"
+second_dictionary_path = f"./cache/{second_lang}.dic"
 num_process = 15
+num_sent = 10
 """
     translate service:
     - google
@@ -27,7 +30,11 @@ num_process = 15
     - alibaba
     - sogou
 """
-translators_target = ["google", "alibaba", "sogou", ]
+translators_target = [
+    "google",
+    "alibaba",
+    "sogou",
+]
 
 
 # debug def
@@ -69,11 +76,30 @@ def translatorsTrans(x, source, target, host):
 
 
 def translatorsTransExecute(cmd):
-    return translatorsTrans(cmd[0], cmd[1], cmd[2], cmd[3])
+    return translatorsTrans(*cmd)
 
 
 def translatorsTransPool(cmds):
     return multiprocessing.pool.ThreadPool(processes=num_process).map(translatorsTransExecute, cmds)
+
+
+def transIntoList(sent, source_lang, target_lang, target_dictionary):
+    return checkSpellingPool(
+        (
+            [convert(trans), target_dictionary, target_lang]
+            for trans in translatorsTransPool(
+                ((sent, source_lang, target_lang, host) for host in translators_target)
+            )
+        )
+    )
+
+
+def transIntoListExecute(cmd):
+    return transIntoList(*cmd)
+
+
+def transIntoListPool(cmds):
+    return multiprocessing.pool.ThreadPool(processes=num_process).map(transIntoListExecute, cmds)
 
 
 # utils
@@ -206,7 +232,7 @@ def createOBJ(conn, sql, obj):
 
 
 def createOBJExecute(cmd):
-    return createOBJ(cmd[0], cmd[1], cmd[2])
+    return createOBJ(*cmd)
 
 
 def createOBJPool(cmds, con):
@@ -259,149 +285,123 @@ def checkSpelling(text, dictionary, lang) -> str:
 
 
 def checkSpellingExecute(cmd):
-    return checkSpelling(cmd[0], cmd[1], cmd[2])
+    return checkSpelling(*cmd)
 
 
 def checkSpellingPool(cmds):
     return multiprocessing.pool.ThreadPool(processes=num_process).map(checkSpellingExecute, cmds)
 
 
+def addsent(first_sent, second_sent):
+    is_error, is_agree, is_add, first_dump_sent, second_dump_sent, cmds = (
+        False,
+        "!",
+        False,
+        "",
+        "",
+        [],
+    )
+    first_sent, second_sent = checkSpellingPool(
+        [
+            [convert(first_sent.replace("\n", "")), first_dictionary, first_lang],
+            [convert(second_sent.replace("\n", "")), second_dictionary, second_lang],
+        ]
+    )
+    if not first_sent or not second_sent:
+        is_error = True
+    else:
+        try:
+            first_trans, second_trans = transIntoListPool(
+                [
+                    [first_sent, first_lang, second_lang, second_dictionary],
+                    [second_sent, second_lang, first_lang, first_dictionary],
+                ]
+            )
+        except Exception as e:
+            is_error = True
+            printError("translate section", e, False)
+        else:
+            first_ratio = [diffratio(first_sent, trans_sent) for trans_sent in second_trans]
+            second_ratio = [diffratio(second_sent, trans_sent) for trans_sent in first_trans]
+
+            if (
+                all(not ratio > accept_percentage for ratio in first_ratio)
+                and all(not ratio > accept_percentage for ratio in second_ratio)
+                and not is_auto
+            ):
+                cleanScreen()
+                print(
+                    f"\t{first_lang} input (acc: {first_ratio[0]})\n\t\t- {first_sent}\n\t\t- {second_trans[0]}\n"
+                )
+                print(
+                    f"\t{second_lang} input (acc: {second_ratio[0]})\n\t\t- {second_sent}\n\t\t- {first_trans[0]}\n"
+                )
+                is_agree = askUserStr("Add to database? (Y/n)")
+            elif any(ratio > accept_percentage for ratio in first_ratio) or any(
+                ratio > accept_percentage for ratio in second_ratio
+            ):
+                is_agree = ""
+            else:
+                is_error = True
+    if (is_agree.lower() == "y" or is_agree == "") and not is_error:
+        table_command = """
+            INSERT INTO {}(Source, Target, Verify)
+            VALUES(?,?,?)
+        """
+        cmds += [[sql_connection, table_command.format(table_name), (first_sent, second_sent, 1)]]
+        for first_tran, second_tran, first_rate, second_rate in zip(
+            first_trans, second_trans, first_ratio, second_ratio
+        ):
+            if first_rate > accept_percentage or second_rate > accept_percentage:
+                cmds += [
+                    [sql_connection, table_command.format(table_name), (first_sent, first_tran, 1)],
+                    [
+                        sql_connection,
+                        table_command.format(table_name),
+                        (second_tran, second_sent, 1),
+                    ],
+                ]
+        is_add = True
+    elif first_sent != "" and second_sent != "":
+        first_dump_sent = first_sent
+        second_dump_sent = second_sent
+
+    print(f"\t({(time.time()-time_start):0,.2f}) ({is_add}) >> {first_sent} | {second_sent}")
+    return first_dump_sent, second_dump_sent, cmds
+
+
+checkLangFile(first_lang, second_lang)
+first_dictionary = loadDictionary(first_dictionary_path)
+second_dictionary = loadDictionary(second_dictionary_path)
 if __name__ == "__main__":
     sql_connection = getSQLCursor(cfg["sqlite"]["path"])
     createSQLtable(sql_connection)
-    checkLangFile(first_lang, second_lang)
 
-    first_dictionary_path = f"./cache/{first_lang}.dic"
-    second_dictionary_path = f"./cache/{second_lang}.dic"
-    first_dictionary = loadDictionary(first_dictionary_path)
-    second_dictionary = loadDictionary(second_dictionary_path)
     first_path = f"./data/{first_lang}.txt"
     second_path = f"./data/{second_lang}.txt"
     while 1:
         time_start = time.time()
-        is_error = False
-        is_agree = "!"
-        is_add = False
         if isEmpty(first_path) or isEmpty(second_path):
             print("Done!")
             exit()
-        first_file = open(first_path, "r")
-        first_dump = open(f"./data/{first_lang}.dump", "a")
-        second_file = open(second_path, "r")
-        second_dump = open(f"./data/{second_lang}.dump", "a")
-        first_sent, second_sent = checkSpellingPool(
-            (
-                [
-                    convert(str(first_file.readline()).replace("\n", "")),
-                    first_dictionary,
-                    first_lang,
-                ],
-                [
-                    convert(str(second_file.readline()).replace("\n", "")),
-                    second_dictionary,
-                    second_lang,
-                ],
-            )
-        )
-        if not first_sent or not second_sent:
-            is_error = True
-        else:
-            try:
-                second_trans = checkSpellingPool(
-                    (
-                        [convert(trans), first_dictionary, first_lang]
-                        for trans in translatorsTransPool(
-                            (
-                                (second_sent, second_lang, first_lang, host)
-                                for host in translators_target
-                            )
-                        )
-                    )
-                )
-                first_trans = checkSpellingPool(
-                    (
-                        [convert(trans), second_dictionary, second_lang]
-                        for trans in translatorsTransPool(
-                            (
-                                (first_sent, first_lang, second_lang, host)
-                                for host in translators_target
-                            )
-                        )
-                    )
-                )
-            except Exception as e:
-                is_error = True
-                printError("translate section", e, False)
-            else:
-                first_ratio = [diffratio(first_sent, trans_sent) for trans_sent in second_trans]
-                second_ratio = [diffratio(second_sent, trans_sent) for trans_sent in first_trans]
 
-                if (
-                    all(not ratio > accept_percentage for ratio in first_ratio)
-                    and all(not ratio > accept_percentage for ratio in second_ratio)
-                    and not is_auto
-                ):
-                    cleanScreen()
-                    print(
-                        f"\t{first_lang} input (acc: {first_ratio[0]})\n\t\t- {first_sent}\n\t\t- {second_trans[0]}\n"
-                    )
-                    print(
-                        f"\t{second_lang} input (acc: {second_ratio[0]})\n\t\t- {second_sent}\n\t\t- {first_trans[0]}\n"
-                    )
-                    is_agree = askUserStr("Add to database? (Y/n)")
-                elif any(ratio > accept_percentage for ratio in first_ratio) or any(
-                    ratio > accept_percentage for ratio in second_ratio
-                ):
-                    is_agree = ""
-                else:
-                    is_error = True
-        if (is_agree.lower() == "y" or is_agree == "") and not is_error:
-            table_command = """
-                INSERT INTO {}(Source, Target, Verify)
-                VALUES(?,?,?)
-            """
-            cmds = [
-                [sql_connection, table_command.format(table_name), (first_sent, second_sent, 1)]
-            ]
-            for first_tran, second_tran, first_rate, second_rate in zip(
-                first_trans, second_trans, first_ratio, second_ratio
-            ):
-                if first_rate > accept_percentage or second_rate > accept_percentage:
-                    cmds += [
-                        [
-                            sql_connection,
-                            table_command.format(table_name),
-                            (first_sent, first_tran, 1),
-                        ],
-                        [
-                            sql_connection,
-                            table_command.format(table_name),
-                            (second_tran, second_sent, 1),
-                        ],
-                    ]
-            createOBJPool(cmds, sql_connection)
-            is_add = True
-        elif is_agree == "exit":
-            break
-        else:
-            if first_sent != "" and second_sent != "":
-                first_dump.write(f"\n{(first_sent)}")
-                second_dump.write(f"\n{(second_sent)}")
-        saveIN = first_file.read().splitlines(True)
-        saveOU = second_file.read().splitlines(True)
-        first_file.close()
-        second_file.close()
+        with open(first_path, "r") as first_file:
+            with open(second_path, "r") as second_file:
+                first_dump_sent, second_dump_sent, cmds = addsent(
+                    first_file.readline(), second_file.readline()
+                )
+                saveIN = first_file.read().splitlines(True)
+                saveOU = second_file.read().splitlines(True)
+
+        with open(f"./data/{first_lang}.dump", "a") as f:
+            (f.write(f"\n{(sent)}") for sent in first_dump_sent)
+        with open(f"./data/{second_lang}.dump", "a") as f:
+            (f.write(f"\n{(sent)}") for sent in second_dump_sent)
+
         with open(first_path, "w") as file:
-            file.writelines(saveIN[1:])
+            file.writelines(saveIN[num_sent:])
         with open(second_path, "w") as file:
-            file.writelines(saveOU[1:])
-        print(
-            f"\t({(time.time()-time_start):0,.2f}) ({is_add}) >> ",
-            first_sent,
-            "|",
-            second_sent,
-        )
-        first_dump.close()
-        second_dump.close()
+            file.writelines(saveOU[num_sent:])
+
         saveDictionary(first_dictionary_path, first_dictionary)
         saveDictionary(second_dictionary_path, second_dictionary)
