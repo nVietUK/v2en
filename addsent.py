@@ -201,10 +201,12 @@ def createOBJ(conn, sql, obj):
 def createOBJExecute(cmd):
     return createOBJ(cmd[0], cmd[1], cmd[2])
 
+
 def createOBJPool(cmds, con):
     for cmd in cmds:
         createOBJExecute(cmd)
     con.commit()
+
 
 def getSQLCursor(path):
     try:
@@ -298,17 +300,26 @@ if __name__ == "__main__":
             is_error = True
         else:
             try:
-                second_trans = list(
-                    translatorsTransPool(
-                        (
-                            (second_sent, second_lang, first_lang, host)
-                            for host in translators_target
+                second_trans = checkSpellingPool(
+                    (
+                        [convert(trans), first_dictionary, first_lang]
+                        for trans in translatorsTransPool(
+                            (
+                                (second_sent, second_lang, first_lang, host)
+                                for host in translators_target
+                            )
                         )
                     )
                 )
-                first_trans = list(
-                    translatorsTransPool(
-                        ((first_sent, first_lang, second_lang, host) for host in translators_target)
+                first_trans = checkSpellingPool(
+                    (
+                        [convert(trans), second_dictionary, second_lang]
+                        for trans in translatorsTransPool(
+                            (
+                                (first_sent, first_lang, second_lang, host)
+                                for host in translators_target
+                            )
+                        )
                     )
                 )
             except Exception as e:
