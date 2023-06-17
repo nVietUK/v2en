@@ -400,9 +400,12 @@ if __name__ == "__main__":
                 saveIN = first_file.read().splitlines(True)
                 saveOU = second_file.read().splitlines(True)
                 for e in addSentPool([saveIN[idx], saveOU[idx]] for idx in range(num_sent)):
-                    first_dump_sent.append(e[0]), second_dump_sent.append(e[1]), cmds.append(e[2])
+                    if e[0] != "" and e[1] != "":
+                        first_dump_sent.append(e[0]), second_dump_sent.append(e[1])
+                    if len(e[2]) == 3:
+                        cmds.append(e[2])
 
-        createOBJPool(cmds)
+        createOBJPool(cmds, sql_connection)
 
         with open(f"./data/{first_lang}.dump", "a") as f:
             (f.write(f"\n{(sent)}") for sent in first_dump_sent)
