@@ -61,11 +61,11 @@ def deepTransGoogle(x: str, source: str, target: str) -> str:
         return ""
 
 
-def translatorsTrans(x, source, target, host):
+def translatorsTrans(x: str, source: str, target: str, host: str)->str:
     try:
         return translators.translate_text(
             x, from_language=source, to_language=target, translator=host
-        )
+        )[0]
     except Exception as e:
         printError(translatorsTrans.__name__, e, False)
         return deepTransGoogle(x, source, target)
@@ -250,6 +250,7 @@ def createOBJPool(cmds, con):
 
 
 def getSQLCursor(path):
+    sqliteConnection = sqlite3.Connection
     try:
         sqliteConnection = sqlite3.connect(path)
         print("Database created and Successfully Connected to SQLite")
@@ -350,28 +351,27 @@ def addSent(first_sent: str, second_sent: str):
                 is_agree = ""
             else:
                 is_error = True
-    if (is_agree.lower() == "y" or is_agree == "") and not is_error:
-        table_command = """
-            INSERT INTO {}(Source, Target, Verify)
-            VALUES(?,?,?)
-        """
-        cmds += [[sql_connection, table_command.format(table_name), (first_sent, second_sent, 1)]]
-        for first_tran, second_tran, first_rate, second_rate in zip(
-            first_trans, second_trans, first_ratio, second_ratio
-        ):
-            if first_rate > accept_percentage or second_rate > accept_percentage:
-                cmds += [
-                    [sql_connection, table_command.format(table_name), (first_sent, first_tran, 1)],
-                    [
-                        sql_connection,
-                        table_command.format(table_name),
-                        (second_tran, second_sent, 1),
-                    ],
-                ]
-        is_add = True
-    elif first_sent != "" and second_sent != "":
-        first_dump_sent = first_sent
-        second_dump_sent = second_sent
+            if (is_agree.lower() == "y" or is_agree == "") and not is_error:
+                table_command = """
+                    INSERT INTO {}(Source, Target, Verify)
+                    VALUES(?,?,?)
+                """
+                cmds += [[sql_connection, table_command.format(table_name), (first_sent, second_sent, 1)]]
+                for first_tran, second_tran, first_rate, second_rate in zip(
+                    first_trans, second_trans, first_ratio, second_ratio
+                ):
+                    if first_rate > accept_percentage or second_rate > accept_percentage:
+                        cmds += [
+                            [sql_connection, table_command.format(table_name), (first_sent, first_tran, 1)],
+                            [
+                                sql_connection,
+                                table_command.format(table_name),
+                                (second_tran, second_sent, 1),
+                            ],
+                        ]
+                is_add = True
+    if first_sent != "" and second_sent != "" and is_error:
+        first_dump_sent, second_dump_sent = first_sent, second_sent
 
     print(f"\t({(time.time()-time_start):0,.2f}) ({is_add}) >> {first_sent} | {second_sent}")
     return first_dump_sent, second_dump_sent, cmds
