@@ -292,7 +292,8 @@ def checkSpellingPool(cmds):
     return multiprocessing.pool.ThreadPool(processes=num_process).map(checkSpellingExecute, cmds)
 
 
-def addsent(first_sent, second_sent):
+def addSent(first_sent, second_sent):
+    time_start = time.time()
     is_error, is_agree, is_add, first_dump_sent, second_dump_sent, cmds = (
         False,
         "!",
@@ -370,6 +371,14 @@ def addsent(first_sent, second_sent):
     return first_dump_sent, second_dump_sent, cmds
 
 
+def addSentExecute(cmd):
+    return addSent(*cmd)
+
+
+def addSentPool(cmds):
+    return multiprocessing.pool.ThreadPool(processes=num_process).map(addSentExecute, cmds)
+
+
 checkLangFile(first_lang, second_lang)
 first_dictionary = loadDictionary(first_dictionary_path)
 second_dictionary = loadDictionary(second_dictionary_path)
@@ -385,13 +394,15 @@ if __name__ == "__main__":
             print("Done!")
             exit()
 
+        first_dump_sent, second_dump_sent, cmds = [], [], []
         with open(first_path, "r") as first_file:
             with open(second_path, "r") as second_file:
-                first_dump_sent, second_dump_sent, cmds = addsent(
-                    first_file.readline(), second_file.readline()
-                )
                 saveIN = first_file.read().splitlines(True)
                 saveOU = second_file.read().splitlines(True)
+                for e in addSentPool([saveIN[idx], saveOU[idx]] for idx in range(num_sent)):
+                    first_dump_sent.append(e[0]), second_dump_sent.append(e[1]), cmds.append(e[2])
+
+        createOBJPool(cmds)
 
         with open(f"./data/{first_lang}.dump", "a") as f:
             (f.write(f"\n{(sent)}") for sent in first_dump_sent)
@@ -405,3 +416,4 @@ if __name__ == "__main__":
 
         saveDictionary(first_dictionary_path, first_dictionary)
         saveDictionary(second_dictionary_path, second_dictionary)
+        print(f"\t\t(mainModule) time consume: {(time.time()-time_start):0,.2f}")
