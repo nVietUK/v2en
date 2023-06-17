@@ -24,13 +24,10 @@ num_process = 15
     translate service:
     - google
     - bing
-    - yandex
     - alibaba
-    - youdao
     - sogou
-    - argox
 """
-translators_target = ["google", "yandex", "alibaba", , "youdao", "sogou", "argox"]
+translators_target = ["google", "alibaba", "sogou", ]
 
 
 # debug def
