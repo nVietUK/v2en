@@ -2,3 +2,5 @@ sqlite:
     path: ./database.db
 v2en:
     target: en-vi
+DetectLang:
+    APIkey: xxxxxxxx

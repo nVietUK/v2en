@@ -21,8 +21,8 @@ is_auto = True
 table_name = "Translation"
 first_dictionary_path = f"./cache/{first_lang}.dic"
 second_dictionary_path = f"./cache/{second_lang}.dic"
-num_process = 15
-num_sent = 10
+num_process = 18
+num_sent = 20
 """
     translate service:
     - google
@@ -30,21 +30,15 @@ num_sent = 10
     - alibaba
     - sogou
 """
-translators_target = [
-    "google",
-    "alibaba",
-    "sogou",
-]
+translators_target = ["google", "bing", "sogou", "alibaba"]
 
 
 # debug def
 def printError(text, error, is_exit=True):
+    if not debug:
+        return
     print(
-        "---------------------\n\tExpectation while {} \
-        \n\tError type: {}\n--------------------- \
-          \n\n{}".format(
-            text, type(error), error
-        )
+        f"---------------------\n\tExpectation while {text}\n\tError type: {type(error)}\n---------------------\n\n{error}"
     )
     if is_exit:
         exit(0)
@@ -122,17 +116,11 @@ def convert(x: str) -> str:
     return x.lower().replace("  ", " ").replace("  ", " ")
 
 
-def isExistOnWiki(word: str) -> bool:
+def isExistOnWiki(word: str, lang: str) -> bool:
     printInfo(isExistOnWiki.__name__, multiprocessing.current_process().name)
-    return (
-        requests.get(f"https://en.wiktionary.org/wiki/{word}").status_code == 200
-        or requests.get(f"https://en.wikipedia.org/wiki/{word}").status_code == 200
-    )
-
-
-def isExistOnWikiPool(cmds):
-    pool = multiprocessing.pool.ThreadPool(processes=num_process)
-    return pool.map(isExistOnWiki, cmds)
+    return requests.get(
+        f"https://{lang}.wiktionary.org/wiki/{word}"
+    ).status_code == 200 and deep_translator.single_detection(word, cfg["DetectLang"]["APIkey"]) == lang
 
 
 def cleanScreen() -> None:
@@ -260,9 +248,9 @@ def checkSpelling(text, dictionary, lang) -> str:
             if (
                 word in dictionary
                 or word.isnumeric()
-                or isExistOnWiki(word)
-                or isExistOnWiki(f"{words[idx-1]} {word}")
-                or (idx + 1 < len(words) and isExistOnWiki(f"{word} {words[idx+1]}"))
+                or isExistOnWiki(word, lang)
+                or isExistOnWiki(f"{words[idx-1]} {word}", lang)
+                or (idx + 1 < len(words) and isExistOnWiki(f"{word} {words[idx+1]}", lang))
             ):
                 outstr += f"{word} "
             else:
@@ -402,9 +390,7 @@ if __name__ == "__main__":
                 for e in addSentPool([saveIN[idx], saveOU[idx]] for idx in range(num_sent)):
                     if e[0] != "" and e[1] != "":
                         first_dump_sent.append(e[0]), second_dump_sent.append(e[1])
-                    if len(e[2]) == 3:
-                        cmds.append(e[2])
-
+                    cmds.extend(i for i in e[2] if len(i) == 3)
         createOBJPool(cmds, sql_connection)
 
         with open(f"./data/{first_lang}.dump", "a") as f:
