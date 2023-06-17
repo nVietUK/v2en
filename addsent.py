@@ -23,8 +23,8 @@ is_auto = True
 table_name = "Translation"
 first_dictionary_path = f"./cache/{first_lang}.dic"
 second_dictionary_path = f"./cache/{second_lang}.dic"
-num_process = 18
-num_sent = 20
+num_process = 14
+num_sent = 18
 """
     translate service:
     - google
@@ -259,8 +259,9 @@ def getSQLCursor(path):
 
 
 # language utils
-def checkSpelling(text, dictionary, lang) -> str:
+def checkSpelling(text: str, dictionary: list, lang: str) -> str:
     printInfo(checkSpelling.__name__, multiprocessing.current_process().pid)
+    word = ""
     try:
         words = text.split()
         outstr = ""
@@ -280,17 +281,13 @@ def checkSpelling(text, dictionary, lang) -> str:
                 dictionary.insert(0, word)
         return outstr
     except ValueError:
-        if not is_auto and askUserYN(f"Add {word} to dictionary?"):
-            dictionary[word] = 1
-            print(f"add {word} !")
-            return checkSpelling(text, dictionary)
-        else:
-            printError(f"add word {word}", "", False)
-            with open(f"./cache/{lang}.err", "a") as f:
-                f.write(word + "\n")
-            return ""
+        printError(f"add word {word}", "", False)
+        with open(f"./cache/{lang}.err", "a") as f:
+            f.write(word + "\n")
+        return ""
     except Exception as e:
         printError(checkSpelling.__name__, e)
+    return ""
 
 
 def checkSpellingExecute(cmd):
@@ -301,7 +298,7 @@ def checkSpellingPool(cmds):
     return multiprocessing.pool.ThreadPool(processes=num_process).map(checkSpellingExecute, cmds)
 
 
-def addSent(first_sent, second_sent):
+def addSent(first_sent: str, second_sent: str):
     time_start = time.time()
     is_error, is_agree, is_add, first_dump_sent, second_dump_sent, cmds = (
         False,
