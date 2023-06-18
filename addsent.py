@@ -11,6 +11,7 @@ import string
 import translators
 from html.parser import HTMLParser
 import langcodes
+import signal
 
 with open("config.yml", "r") as ymlfile:
     cfg = yaml.safe_load(ymlfile)
@@ -23,8 +24,10 @@ is_auto = True
 table_name = "Translation"
 first_dictionary_path = f"./cache/{first_lang}.dic"
 second_dictionary_path = f"./cache/{second_lang}.dic"
-num_process = 70
-num_sent = 20
+main_execute = True
+num_sent = 25
+false_allow = 50
+thread_alow = True
 """
     translate service:
     - google
@@ -36,8 +39,8 @@ translators_target = ["google", "bing", "sogou", "alibaba"]
 
 
 # debug def
-def printError(text, error, is_exit=True):
-    if not debug:
+def printError(text, error, is_exit=True, avoid_debug=False):
+    if not debug and not avoid_debug:
         return
     print(
         f"---------------------\n\tExpectation while {text}\n\tError type: {type(error)}\n---------------------\n\n{error}"
@@ -61,11 +64,15 @@ def deepTransGoogle(x: str, source: str, target: str) -> str:
         return ""
 
 
-def translatorsTrans(x: str, source: str, target: str, host: str)->str:
+def translatorsTrans(x: str, source: str, target: str, host: str) -> str:
     try:
-        return translators.translate_text(
+        ou = translators.translate_text(
             x, from_language=source, to_language=target, translator=host
-        )[0]
+        )
+        if type(ou) != str:
+            printError(translatorsTrans.__name__, Exception("Type error"), False, True)
+            return deepTransGoogle(x, source, target)
+        return ou
     except Exception as e:
         printError(translatorsTrans.__name__, e, False)
         return deepTransGoogle(x, source, target)
@@ -75,18 +82,22 @@ def translatorsTransExecute(cmd):
     return translatorsTrans(*cmd)
 
 
-def translatorsTransPool(cmds):
-    return multiprocessing.pool.ThreadPool(processes=num_process).map(translatorsTransExecute, cmds)
+def translatorsTransPool(cmds) -> list:
+    if thread_alow:
+        return multiprocessing.pool.ThreadPool(processes=len(cmds)).map(
+            translatorsTransExecute, cmds
+        )
+    return [translatorsTrans(*cmd) for cmd in cmds]
 
 
 def transIntoList(sent, source_lang, target_lang, target_dictionary):
     return checkSpellingPool(
-        (
+        [
             [convert(trans), target_dictionary, target_lang]
             for trans in translatorsTransPool(
-                ((sent, source_lang, target_lang, host) for host in translators_target)
+                [(sent, source_lang, target_lang, host) for host in translators_target]
             )
-        )
+        ]
     )
 
 
@@ -95,7 +106,9 @@ def transIntoListExecute(cmd):
 
 
 def transIntoListPool(cmds):
-    return multiprocessing.pool.ThreadPool(processes=num_process).map(transIntoListExecute, cmds)
+    if thread_alow:
+        return multiprocessing.pool.ThreadPool(processes=len(cmds)).map(transIntoListExecute, cmds)
+    return [transIntoList(*cmd) for cmd in cmds]
 
 
 # utils
@@ -105,6 +118,12 @@ def diffratio(x, y):
 
 def isEmpty(path):
     return os.stat(path).st_size == 0
+
+
+def signalHandler(sig, frame):
+    global main_execute
+    print("\tStop program!")
+    main_execute = False
 
 
 def convert(x: str) -> str:
@@ -296,7 +315,9 @@ def checkSpellingExecute(cmd):
 
 
 def checkSpellingPool(cmds):
-    return multiprocessing.pool.ThreadPool(processes=num_process).map(checkSpellingExecute, cmds)
+    if thread_alow:
+        return multiprocessing.pool.ThreadPool(processes=len(cmds)).map(checkSpellingExecute, cmds)
+    return [checkSpelling(*cmd) for cmd in cmds]
 
 
 def addSent(first_sent: str, second_sent: str):
@@ -356,13 +377,19 @@ def addSent(first_sent: str, second_sent: str):
                     INSERT INTO {}(Source, Target, Verify)
                     VALUES(?,?,?)
                 """
-                cmds += [[sql_connection, table_command.format(table_name), (first_sent, second_sent, 1)]]
+                cmds += [
+                    [sql_connection, table_command.format(table_name), (first_sent, second_sent, 1)]
+                ]
                 for first_tran, second_tran, first_rate, second_rate in zip(
                     first_trans, second_trans, first_ratio, second_ratio
                 ):
                     if first_rate > accept_percentage or second_rate > accept_percentage:
                         cmds += [
-                            [sql_connection, table_command.format(table_name), (first_sent, first_tran, 1)],
+                            [
+                                sql_connection,
+                                table_command.format(table_name),
+                                (first_sent, first_tran, 1),
+                            ],
                             [
                                 sql_connection,
                                 table_command.format(table_name),
@@ -374,27 +401,31 @@ def addSent(first_sent: str, second_sent: str):
         first_dump_sent, second_dump_sent = first_sent, second_sent
 
     print(f"\t({(time.time()-time_start):0,.2f}) ({is_add}) >> {first_sent} | {second_sent}")
-    return first_dump_sent, second_dump_sent, cmds
+    return first_dump_sent, second_dump_sent, cmds, is_add
 
 
 def addSentExecute(cmd):
     return addSent(*cmd)
 
 
-def addSentPool(cmds):
-    return multiprocessing.pool.ThreadPool(processes=num_process).map(addSentExecute, cmds)
+def addSentPool(cmds: list):
+    if thread_alow:
+        return multiprocessing.pool.ThreadPool(processes=len(cmds)).map(addSentExecute, cmds)
+    return [addSent(*cmd) for cmd in cmds]
 
 
 checkLangFile(first_lang, second_lang)
 first_dictionary = loadDictionary(first_dictionary_path)
 second_dictionary = loadDictionary(second_dictionary_path)
+signal.signal(signal.SIGINT, signalHandler)
+
 if __name__ == "__main__":
     sql_connection = getSQLCursor(cfg["sqlite"]["path"])
     createSQLtable(sql_connection)
+    false_count = 0
 
-    first_path = f"./data/{first_lang}.txt"
-    second_path = f"./data/{second_lang}.txt"
-    while 1:
+    first_path, second_path = f"./data/{first_lang}.txt", f"./data/{second_lang}.txt"
+    while main_execute:
         time_start = time.time()
         if isEmpty(first_path) or isEmpty(second_path):
             print("Done!")
@@ -403,15 +434,27 @@ if __name__ == "__main__":
         first_dump_sent, second_dump_sent, cmds = [], [], []
         with open(first_path, "r") as first_file:
             with open(second_path, "r") as second_file:
-                saveIN = first_file.read().splitlines(True)
-                saveOU = second_file.read().splitlines(True)
+                saveIN, saveOU = first_file.read().splitlines(True), second_file.read().splitlines(
+                    True
+                )
                 for e in addSentPool(
-                    [saveIN[idx], saveOU[idx]]
-                    for idx in range(num_sent if len(saveIN) > num_sent else len(saveIN))
+                    [
+                        [saveIN[idx], saveOU[idx]]
+                        for idx in range(num_sent if len(saveIN) > num_sent else len(saveIN))
+                    ]
                 ):
                     if e[0] != "" and e[1] != "":
                         first_dump_sent.append(e[0]), second_dump_sent.append(e[1])
                     cmds.extend(i for i in e[2] if len(i) == 3)
+                    if e[3]:
+                        false_count = 0
+                    else:
+                        false_count += 1
+                    if false_count > false_allow and main_execute:
+                        printError(
+                            "mainModule", Exception("Too many fatal translation!"), False, True
+                        )
+                        main_execute = False
         createOBJPool(cmds, sql_connection)
 
         with open(f"./data/{first_lang}.dump", "a") as f:
