@@ -84,7 +84,7 @@ def translatorsTransExecute(cmd):
 
 def translatorsTransPool(cmds) -> list:
     if thread_alow:
-        return multiprocessing.pool.ThreadPool(processes=len(cmds)).map(
+        return multiprocessing.pool.ThreadPool(processes=len(cmds)+2).map(
             translatorsTransExecute, cmds
         )
     return [translatorsTrans(*cmd) for cmd in cmds]
@@ -107,7 +107,7 @@ def transIntoListExecute(cmd):
 
 def transIntoListPool(cmds):
     if thread_alow:
-        return multiprocessing.pool.ThreadPool(processes=len(cmds)).map(transIntoListExecute, cmds)
+        return multiprocessing.pool.ThreadPool(processes=len(cmds)+2).map(transIntoListExecute, cmds)
     return [transIntoList(*cmd) for cmd in cmds]
 
 
@@ -302,10 +302,12 @@ def checkSpelling(text: str, dictionary: list, lang: str) -> str:
                 dictionary.insert(0, word)
         return outstr
     except ValueError:
-        printError(f"add word {word}", "", False)
-        with open(f"./cache/{lang}.err", "a") as f:
-            f.write(word + "\n")
-        return ""
+        printError(
+            f"add word for {lang}",
+            Exception(f"\t{word} isn't existed on Wikitionary!"),
+            False,
+            True,
+        )
     except Exception as e:
         printError(checkSpelling.__name__, e)
     return ""
@@ -317,29 +319,20 @@ def checkSpellingExecute(cmd):
 
 def checkSpellingPool(cmds):
     if thread_alow:
-        return multiprocessing.pool.ThreadPool(processes=len(cmds)).map(checkSpellingExecute, cmds)
+        return multiprocessing.pool.ThreadPool(processes=len(cmds)+2).map(checkSpellingExecute, cmds)
     return [checkSpelling(*cmd) for cmd in cmds]
 
 
 def addSent(first_sent: str, second_sent: str):
     time_start = time.time()
-    is_error, is_agree, is_add, first_dump_sent, second_dump_sent, cmds = (
-        False,
-        "!",
-        False,
-        "",
-        "",
-        [],
-    )
+    is_error, is_agree, first_dump_sent, second_dump_sent, cmds = True, False, "", "", []
     first_sent, second_sent = checkSpellingPool(
         [
             [convert(first_sent.replace("\n", "")), first_dictionary, first_lang],
             [convert(second_sent.replace("\n", "")), second_dictionary, second_lang],
         ]
     )
-    if not first_sent or not second_sent:
-        is_error = True
-    else:
+    if first_sent and second_sent:
         try:
             first_trans, second_trans = transIntoListPool(
                 [
@@ -348,32 +341,17 @@ def addSent(first_sent: str, second_sent: str):
                 ]
             )
         except Exception as e:
-            is_error = True
             printError("translate section", e, False)
         else:
             first_ratio = [diffratio(first_sent, trans_sent) for trans_sent in second_trans]
             second_ratio = [diffratio(second_sent, trans_sent) for trans_sent in first_trans]
 
-            if (
-                all(not ratio > accept_percentage for ratio in first_ratio)
-                and all(not ratio > accept_percentage for ratio in second_ratio)
-                and not is_auto
-            ):
-                cleanScreen()
-                print(
-                    f"\t{first_lang} input (acc: {first_ratio[0]})\n\t\t- {first_sent}\n\t\t- {second_trans[0]}\n"
-                )
-                print(
-                    f"\t{second_lang} input (acc: {second_ratio[0]})\n\t\t- {second_sent}\n\t\t- {first_trans[0]}\n"
-                )
-                is_agree = askUserStr("Add to database? (Y/n)")
-            elif any(ratio > accept_percentage for ratio in first_ratio) or any(
+            if any(ratio > accept_percentage for ratio in first_ratio) or any(
                 ratio > accept_percentage for ratio in second_ratio
             ):
-                is_agree = ""
-            else:
-                is_error = True
-            if (is_agree.lower() == "y" or is_agree == "") and not is_error:
+                is_agree = True
+                is_error = False
+            if is_agree and not is_error:
                 table_command = """
                     INSERT INTO {}(Source, Target, Verify)
                     VALUES(?,?,?)
@@ -397,12 +375,11 @@ def addSent(first_sent: str, second_sent: str):
                                 (second_tran, second_sent, 1),
                             ],
                         ]
-                is_add = True
     if first_sent != "" and second_sent != "" and is_error:
         first_dump_sent, second_dump_sent = first_sent, second_sent
 
-    print(f"\t({(time.time()-time_start):0,.2f}) ({is_add}) >> {first_sent} | {second_sent}")
-    return first_dump_sent, second_dump_sent, cmds, is_add
+    print(f"\t({(time.time()-time_start):0,.2f}) ({is_agree}) >> {first_sent} | {second_sent}")
+    return first_dump_sent, second_dump_sent, cmds, is_agree
 
 
 def addSentExecute(cmd):
@@ -411,7 +388,7 @@ def addSentExecute(cmd):
 
 def addSentPool(cmds: list):
     if thread_alow:
-        return multiprocessing.pool.ThreadPool(processes=len(cmds)).map(addSentExecute, cmds)
+        return multiprocessing.pool.ThreadPool(processes=len(cmds)+2).map(addSentExecute, cmds)
     return [addSent(*cmd) for cmd in cmds]
 
 
@@ -447,10 +424,7 @@ if __name__ == "__main__":
                     if e[0] != "" and e[1] != "":
                         first_dump_sent.append(e[0]), second_dump_sent.append(e[1])
                     cmds.extend(i for i in e[2] if len(i) == 3)
-                    if e[3]:
-                        false_count = 0
-                    else:
-                        false_count += 1
+                    false_count += (-false_count if e[3] else 1)
                     if false_count > false_allow and main_execute:
                         printError(
                             "mainModule", Exception("Too many fatal translation!"), False, True
@@ -459,9 +433,11 @@ if __name__ == "__main__":
         createOBJPool(cmds, sql_connection)
 
         with open(f"./data/{first_lang}.dump", "a") as f:
-            (f.write(f"\n{(sent)}") for sent in first_dump_sent)
+            for sent in first_dump_sent:
+                f.write(f"{sent}\n")
         with open(f"./data/{second_lang}.dump", "a") as f:
-            (f.write(f"\n{(sent)}") for sent in second_dump_sent)
+            for sent in second_dump_sent:
+                f.write(f"{sent}\n")
 
         with open(first_path, "w") as file:
             file.writelines(saveIN[num_sent:])
