@@ -17,10 +17,10 @@ with open("config.yml", "r") as ymlfile:
     cfg = yaml.safe_load(ymlfile)
 target = cfg["v2en"]["target"]
 first_lang = target[:2]
-debug = False
 second_lang = target[-2:]
 accept_percentage = 0.65
 is_auto = True
+debug = False
 table_name = "Translation"
 first_dictionary_path = f"./cache/{first_lang}.dic"
 second_dictionary_path = f"./cache/{second_lang}.dic"
@@ -268,13 +268,14 @@ def createOBJPool(cmds, con):
     con.commit()
 
 
-def getSQLCursor(path):
-    sqliteConnection = sqlite3.Connection
+def getSQLCursor(path) -> sqlite3.Connection:
     try:
         sqliteConnection = sqlite3.connect(path)
         print("Database created and Successfully Connected to SQLite")
     except sqlite3.Error as error:
-        printError(getSQLCursor.__name__, error)
+        printError(getSQLCursor.__name__, error, True, True)
+    except Exception as e:
+        printError(getSQLCursor.__name__, e, True, True)
     return sqliteConnection
 
 
