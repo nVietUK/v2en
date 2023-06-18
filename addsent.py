@@ -25,7 +25,7 @@ table_name = "Translation"
 first_dictionary_path = f"./cache/{first_lang}.dic"
 second_dictionary_path = f"./cache/{second_lang}.dic"
 main_execute = True
-num_sent = 25
+num_sent = 30
 false_allow = 50
 thread_alow = True
 """
@@ -43,7 +43,7 @@ def printError(text, error, is_exit=True, avoid_debug=False):
     if not debug and not avoid_debug:
         return
     print(
-        f"---------------------\n\tExpectation while {text}\n\tError type: {type(error)}\n---------------------\n\n{error}"
+        f"{'_'*50}\n\tExpectation while {text}\n\tError type: {type(error)}\n\t{error}\n{chr(8254)*50}"
     )
     if is_exit:
         exit(0)
@@ -84,7 +84,7 @@ def translatorsTransExecute(cmd):
 
 def translatorsTransPool(cmds) -> list:
     if thread_alow:
-        return multiprocessing.pool.ThreadPool(processes=len(cmds)+2).map(
+        return multiprocessing.pool.ThreadPool(processes=len(cmds) + 2).map(
             translatorsTransExecute, cmds
         )
     return [translatorsTrans(*cmd) for cmd in cmds]
@@ -107,7 +107,9 @@ def transIntoListExecute(cmd):
 
 def transIntoListPool(cmds):
     if thread_alow:
-        return multiprocessing.pool.ThreadPool(processes=len(cmds)+2).map(transIntoListExecute, cmds)
+        return multiprocessing.pool.ThreadPool(processes=len(cmds) + 2).map(
+            transIntoListExecute, cmds
+        )
     return [transIntoList(*cmd) for cmd in cmds]
 
 
@@ -243,7 +245,8 @@ def createSQLtable(connection):
 
 def createOBJ(conn, sql, obj):
     try:
-        conn.cursor().execute(sql, obj)
+        if obj[0] and obj[1]:
+            conn.cursor().execute(sql, obj)
     except sqlite3.OperationalError as e:
         if "no column" in str(e):
             createSQLColumn(
@@ -303,10 +306,7 @@ def checkSpelling(text: str, dictionary: list, lang: str) -> str:
         return outstr
     except ValueError:
         printError(
-            f"add word for {lang}",
-            Exception(f"\t{word} isn't existed on Wikitionary!"),
-            False,
-            True,
+            f"add word for {lang}", Exception(f"{word} isn't existed on Wikitionary!"), False
         )
     except Exception as e:
         printError(checkSpelling.__name__, e)
@@ -319,7 +319,9 @@ def checkSpellingExecute(cmd):
 
 def checkSpellingPool(cmds):
     if thread_alow:
-        return multiprocessing.pool.ThreadPool(processes=len(cmds)+2).map(checkSpellingExecute, cmds)
+        return multiprocessing.pool.ThreadPool(processes=len(cmds) + 2).map(
+            checkSpellingExecute, cmds
+        )
     return [checkSpelling(*cmd) for cmd in cmds]
 
 
@@ -388,7 +390,7 @@ def addSentExecute(cmd):
 
 def addSentPool(cmds: list):
     if thread_alow:
-        return multiprocessing.pool.ThreadPool(processes=len(cmds)+2).map(addSentExecute, cmds)
+        return multiprocessing.pool.ThreadPool(processes=len(cmds) + 2).map(addSentExecute, cmds)
     return [addSent(*cmd) for cmd in cmds]
 
 
@@ -424,7 +426,7 @@ if __name__ == "__main__":
                     if e[0] != "" and e[1] != "":
                         first_dump_sent.append(e[0]), second_dump_sent.append(e[1])
                     cmds.extend(i for i in e[2] if len(i) == 3)
-                    false_count += (-false_count if e[3] else 1)
+                    false_count += -false_count if e[3] else 1
                     if false_count > false_allow and main_execute:
                         printError(
                             "mainModule", Exception("Too many fatal translation!"), False, True
