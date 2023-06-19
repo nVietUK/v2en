@@ -1,6 +1,5 @@
 import os
 import yaml
-import sqlite3
 import requests
 import multiprocessing
 import multiprocessing.pool
@@ -12,16 +11,17 @@ import translators
 from html.parser import HTMLParser
 import langcodes
 import signal
+from v2enlib import *
 
 with open("config.yml", "r") as ymlfile:
     cfg = yaml.safe_load(ymlfile)
 target = cfg["v2en"]["target"]
+table_name = cfg['sqlite']['table_name']
 first_lang = target[:2]
 second_lang = target[-2:]
 accept_percentage = 0.65
 is_auto = True
 debug = False
-table_name = "Translation"
 first_dictionary_path = f"./cache/{first_lang}.dic"
 second_dictionary_path = f"./cache/{second_lang}.dic"
 main_execute = True
@@ -36,23 +36,6 @@ thread_alow = True
     - sogou
 """
 translators_target = ["google", "bing", "sogou", "alibaba"]
-
-
-# debug def
-def printError(text, error, is_exit=True, avoid_debug=False):
-    if not debug and not avoid_debug:
-        return
-    print(
-        f"{'_'*50}\n\tExpectation while {text}\n\tError type: {type(error)}\n\t{error}\n{chr(8254)*50}"
-    )
-    if is_exit:
-        exit(0)
-
-
-def printInfo(name, pid):
-    if not debug:
-        return
-    print(f"Dive into {name} with pid id: {pid}")
 
 
 # translate def
@@ -157,7 +140,7 @@ def isExistOnWiki(word: str, lang: str) -> bool:
                     if attr[0] == "id" and attr[1] == display_name:
                         self.isExist = True
 
-    printInfo(isExistOnWiki.__name__, multiprocessing.current_process().name)
+    printInfo(isExistOnWiki.__name__, multiprocessing.current_process().name, debug)
     response = requests.get(f"https://en.wiktionary.org/wiki/{word}")
     parser = LanguageParser()
     parser.feed(response.text)
@@ -185,7 +168,7 @@ def loadDictionary(path):
         with open(path, "r") as f:
             return [word.rstrip("\n") for word in f.read().splitlines(True)]
     except Exception as e:
-        printError(loadDictionary.__name__, e)
+        printError(loadDictionary.__name__, e, debug)
 
 
 def saveDictionary(path, dictionary):
@@ -194,97 +177,12 @@ def saveDictionary(path, dictionary):
             for e in dictionary:
                 f.write(e + "\n")
     except Exception as e:
-        printError(saveDictionary.__name__, e)
-
-
-# ask user defs
-def askUserStr(name_value):
-    answer = input(f"\t{name_value} >> ")
-    return str(answer)
-
-
-def askUserInt(name_value):
-    answer = input(f"\t{name_value} >> ")
-    return int(answer)
-
-
-def askUserYN(message):
-    is_agree = input(f"{message} (Y/n) ")
-    return is_agree.lower() == "y" or is_agree == ""
-
-
-# sql defs
-def createSQLColumn(conn, col_name, col_type, col_status="NOT NULL", col_value="N/A"):
-    try:
-        conn.cursor().execute(
-            """
-            ALTER TABLE {}
-            ADD {} {} {} DEFAULT {}
-        """.format(
-                table_name, col_name, col_type, col_status, col_value
-            )
-        )
-    except Exception as e:
-        printError(createSQLColumn.__name__, e)
-
-
-def createSQLtable(connection):
-    sql_create_table = """CREATE TABLE IF NOT EXISTS {} (
-                            Source LONGTEXT NOT NULL,
-                            Target LONGTEXT NOT NULL,
-                            Verify BOOL NOT NULL
-                        );""".format(
-        table_name
-    )
-    try:
-        connection.cursor().execute(sql_create_table)
-        connection.commit()
-    except Exception as e:
-        printError(createSQLtable.__name__, e)
-
-
-def createOBJ(conn, sql, obj):
-    try:
-        if obj[0] and obj[1]:
-            conn.cursor().execute(sql, obj)
-    except sqlite3.OperationalError as e:
-        if "no column" in str(e):
-            createSQLColumn(
-                conn,
-                str(e).split()[-1],
-                askUserStr("col_type").upper(),
-                askUserStr("col_status").upper(),
-                str(askUserInt("col_value")),
-            )
-            createOBJ(conn, sql, obj)
-    except Exception as e:
-        printError(createOBJ.__name__, e)
-
-
-def createOBJExecute(cmd):
-    return createOBJ(*cmd)
-
-
-def createOBJPool(cmds, con):
-    for cmd in cmds:
-        createOBJExecute(cmd)
-    con.commit()
-
-
-def getSQLCursor(path) -> sqlite3.Connection:
-    try:
-        sqliteConnection = sqlite3.connect(path)
-        print("Database created and Successfully Connected to SQLite")
-    except sqlite3.Error as error:
-        printError(getSQLCursor.__name__, error, True, True)
-    except Exception as e:
-        printError(getSQLCursor.__name__, e, True, True)
-    return sqliteConnection
+        printError(saveDictionary.__name__, e, debug)
 
 
 # language utils
 def checkSpelling(text: str, dictionary: list, lang: str) -> str:
-    printInfo(checkSpelling.__name__, multiprocessing.current_process().pid)
+    printInfo(checkSpelling.__name__, multiprocessing.current_process().pid, debug)
     word = ""
     try:
         words = text.split()
@@ -309,7 +207,7 @@ def checkSpelling(text: str, dictionary: list, lang: str) -> str:
             f"add word for {lang}", Exception(f"{word} isn't existed on Wikitionary!"), False
         )
     except Exception as e:
-        printError(checkSpelling.__name__, e)
+        printError(checkSpelling.__name__, e, debug)
     return ""
 
 
@@ -401,7 +299,7 @@ signal.signal(signal.SIGINT, signalHandler)
 
 if __name__ == "__main__":
     sql_connection = getSQLCursor(cfg["sqlite"]["path"])
-    createSQLtable(sql_connection)
+    createSQLtable(sql_connection, table_name, debug)
     false_count = 0
 
     first_path, second_path = f"./data/{first_lang}.txt", f"./data/{second_lang}.txt"

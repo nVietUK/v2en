@@ -1,4 +1,4 @@
-#Now importing modules
+# Now importing modules
 import numpy as np
 from keras.preprocessing.text import Tokenizer
 from keras.utils import pad_sequences
@@ -8,40 +8,31 @@ from keras.layers import Embedding
 from keras.optimizers import Adam
 from keras.losses import sparse_categorical_crossentropy
 import tensorflow as tf
-import os, sys, pickle
+import pickle
 from datetime import datetime
-import pyyaml
+import yaml
+from v2enlib import *
 
-target=os.getenv("TARGET")
-input_path='./data/{}.txt'.format(target[:2])
-output_path='./data/{}.txt'.format(target[-2:])
-model_path = './models/model.keras'
+with open("config.yml", "r") as f:
+    cfg = yaml.safe_load(f)
+target = cfg["v2en"]["target"]
+model_path = "./models/model.keras"
 
 # check if gpu avaliable
-if len(tf.config.list_physical_devices('GPU')) == 0:
+if len(tf.config.list_physical_devices("GPU")) == 0:
     print("test is only applicable on GPU")
     exit(0)
 
-def load_data(path):
-    input_file = os.path.join(path)
-    with open(input_file, "r") as f:
-        data = f.read()
 
-    return data.split('\n')
-
-# input:
-#       x: a list of sentences
-# output:
-#       tokenizer.texts_to_sequences(x): a list of sentences of word's id
-#       tokenizer: a list of word's id and statistic of it
 def tokenize(x):
     tokenizer = Tokenizer(filters="", lower=False)
     tokenizer.fit_on_texts(x)
     return tokenizer.texts_to_sequences(x), tokenizer
 
-# return a list of same length elements
+
 def pad(x, length=None):
-    return pad_sequences(x, maxlen=length, padding='post')
+    return pad_sequences(x, maxlen=length, padding="post")
+
 
 def preprocess(x, y):
     """
@@ -56,11 +47,10 @@ def preprocess(x, y):
     preprocess_x = pad(preprocess_x)
     preprocess_y = pad(preprocess_y)
 
-    # Keras's sparse_categorical_crossentropy function requires the labels to be in 3 dimensions
-    #Expanding dimensions
     preprocess_y = preprocess_y.reshape(*preprocess_y.shape, 1)
 
     return preprocess_x, preprocess_y, x_tk, y_tk
+
 
 def embed_model(input_shape, output_sequence_length, input_vocab_size, output_vocab_size):
     """
@@ -71,56 +61,72 @@ def embed_model(input_shape, output_sequence_length, input_vocab_size, output_vo
     :param output_vocab_size: Number of unique output words in the dataset
     :return: Keras model built, but not trained
     """
-    #Config Hyperparameters
+    # Config Hyperparameters
     learning_rate = 0.005
     latent_dim = 128
-    
-    #Config Model
+
+    # Config Model
     inputs = Input(shape=input_shape[1:])
-    embedding_layer = Embedding(input_dim=input_vocab_size,
-                                output_dim=output_sequence_length,
-                                mask_zero=False)(inputs)
+    embedding_layer = Embedding(
+        input_dim=input_vocab_size, output_dim=output_sequence_length, mask_zero=False
+    )(inputs)
     bd_layer = Bidirectional(GRU(output_sequence_length))(embedding_layer)
-    encoding_layer = Dense(latent_dim, activation='relu')(bd_layer)
+    encoding_layer = Dense(latent_dim, activation="relu")(bd_layer)
     decoding_layer = RepeatVector(output_sequence_length)(encoding_layer)
     output_layer = Bidirectional(GRU(latent_dim, return_sequences=True))(decoding_layer)
-    outputs = TimeDistributed(Dense(output_vocab_size, activation='softmax'))(output_layer)
-    
-    #Create Model from parameters defined above
+    outputs = TimeDistributed(Dense(output_vocab_size, activation="softmax"))(output_layer)
+
+    # Create Model from parameters defined above
     model = Model(inputs=inputs, outputs=outputs)
-    model.compile(loss=sparse_categorical_crossentropy,
-                  optimizer=Adam(learning_rate),
-                  metrics=['accuracy'])
-    
+    model.compile(
+        loss=sparse_categorical_crossentropy, optimizer=Adam(learning_rate), metrics=["accuracy"]
+    )
+
     return model
 
-#Now loading data
-input_sentences=load_data(input_path); output_sentences=load_data(output_path)
 
-preproc_input_sentences, preproc_output_sentences, input_tokenizer, output_tokenizer =\
-    preprocess(input_sentences, output_sentences)
-    
+# Now loading data
+conn = getSQLCursor(cfg["sqlite"]["path"])
+table_name = cfg["sqlite"]["table_name"]
+
+first_sent, second_sent = [], []
+for e in getSQL(conn, f"SELECT * FROM {table_name}"):
+    if e[2]:
+        first_sent.append(e[0])
+        second_sent.append(e[1])
+
+first_preproc_sentences, second_preproc_sentences, first_tokenizer, second_tokenizer = preprocess(
+    first_sent, second_sent
+)
+
 # Reshaping the input to work with a basic RNN
-tmp_x = pad(preproc_input_sentences, preproc_output_sentences.shape[1])
-tmp_x = tmp_x.reshape((-1, preproc_output_sentences.shape[-2]))
+tmp_x = pad(first_preproc_sentences, second_preproc_sentences.shape[1])
+tmp_x = tmp_x.reshape((-1, second_preproc_sentences.shape[-2]))
 
 simple_rnn_model = embed_model(
     tmp_x.shape,
-    preproc_output_sentences.shape[1],
-    len(input_tokenizer.word_index)+1,
-    len(output_tokenizer.word_index)+1)
+    second_preproc_sentences.shape[1],
+    len(first_tokenizer.word_index) + 1,
+    len(second_tokenizer.word_index) + 1,
+)
 
 try:
     simple_rnn_model.summary()
 
-    history=simple_rnn_model.fit(tmp_x, preproc_output_sentences, batch_size=6, epochs=20, validation_split=0.2)
+    history = simple_rnn_model.fit(
+        tmp_x, second_preproc_sentences, batch_size=256, epochs=20, validation_split=0.2
+    )
     simple_rnn_model.save(model_path)
 
-    np.savetxt('./logs/{}.txt'.format(datetime.now().strftime("%d.%m.%Y %H-%M-%S")),\
-                np.array(history.history['accuracy']), delimiter=",")
-except Exception as e: print(e); exit(0)
+    np.savetxt(
+        f"./logs/{datetime.now().strftime('%d.%m.%Y %H-%M-%S')}.txt",
+        np.array(history.history["accuracy"]),
+        delimiter=",",
+    )
+except Exception as e:
+    print(e)
+    exit(0)
 
-val_cache_path='./cache/{}.pkl'.format(target)
-with open(val_cache_path, 'wb') as f: 
-    pickle.dump([output_tokenizer, input_tokenizer, \
-                 preproc_output_sentences], f)
+val_cache_path = "./cache/var.pkl"
+with open(val_cache_path, "wb") as f:
+    pickle.dump([second_tokenizer, first_tokenizer, second_preproc_sentences], f)

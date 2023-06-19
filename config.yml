@@ -1,4 +1,5 @@
 sqlite:
     path: ./database.db
+    table_name: Translation
 v2en:
     target: en-vi
