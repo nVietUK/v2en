@@ -10,9 +10,7 @@ from keras.losses import sparse_categorical_crossentropy
 import tensorflow as tf
 import os, sys, pickle
 from datetime import datetime
-from dotenv import load_dotenv
-
-load_dotenv()
+import pyyaml
 
 target=os.getenv("TARGET")
 input_path='./data/{}.txt'.format(target[:2])
