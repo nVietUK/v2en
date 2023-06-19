@@ -257,7 +257,7 @@ def addSent(first_sent: str, second_sent: str):
                     VALUES(?,?,?)
                 """
                 cmds += [
-                    [sql_connection, table_command.format(table_name), (first_sent, second_sent, 1)]
+                    [sql_connection, table_command.format(table_name), (first_sent, second_sent, 1), debug]
                 ]
                 for first_tran, second_tran, first_rate, second_rate in zip(
                     first_trans, second_trans, first_ratio, second_ratio
@@ -267,12 +267,12 @@ def addSent(first_sent: str, second_sent: str):
                             [
                                 sql_connection,
                                 table_command.format(table_name),
-                                (first_sent, first_tran, 1),
+                                (first_sent, first_tran, 1), debug
                             ],
                             [
                                 sql_connection,
                                 table_command.format(table_name),
-                                (second_tran, second_sent, 1),
+                                (second_tran, second_sent, 1), debug
                             ],
                         ]
     if first_sent != "" and second_sent != "" and is_error:
@@ -323,7 +323,7 @@ if __name__ == "__main__":
                 ):
                     if e[0] != "" and e[1] != "":
                         first_dump_sent.append(e[0]), second_dump_sent.append(e[1])
-                    cmds.extend(i for i in e[2] if len(i) == 3)
+                    cmds.extend(i for i in e[2] if len(i) == 4)
                     false_count += -false_count if e[3] else 1
                     if false_count > false_allow and main_execute:
                         printError(
