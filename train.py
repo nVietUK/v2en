@@ -3,20 +3,37 @@ import numpy as np
 from keras.preprocessing.text import Tokenizer
 from keras.utils import pad_sequences
 from keras.models import Model
-from keras.layers import GRU, Input, Dense, TimeDistributed, RepeatVector, Bidirectional
-from keras.layers import Embedding
+from keras.layers import GRU, Input, Dense, TimeDistributed, RepeatVector, Bidirectional, Embedding
 from keras.optimizers import Adam
-from keras.losses import sparse_categorical_crossentropy
 import tensorflow as tf
 import pickle
 from datetime import datetime
 import yaml
 from v2enlib import *
+import tensorflow_model_optimization as tfmot
+from tensorflow_model_optimization.sparsity import keras as sparsity
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
 
 with open("config.yml", "r") as f:
     cfg = yaml.safe_load(f)
 target = cfg["v2en"]["target"]
 model_path = "./models/model.keras"
+best_model_path = "./models/best.keras"
+initial_sparsity = 0.50
+final_sparsity = 0.90
+begin_step = 1000
+end_step = 5000
+in_develop = False
+pruning_params = {
+    "pruning_schedule": sparsity.PolynomialDecay(
+        initial_sparsity=initial_sparsity,
+        final_sparsity=final_sparsity,
+        begin_step=begin_step,
+        end_step=end_step,
+        power=5.0,
+        frequency=100,
+    )
+}
 
 # check if gpu avaliable
 if len(tf.config.list_physical_devices("GPU")) == 0:
@@ -62,7 +79,7 @@ def embed_model(input_shape, output_sequence_length, input_vocab_size, output_vo
     :return: Keras model built, but not trained
     """
     # Config Hyperparameters
-    learning_rate = 0.005
+    learning_rate = 0.001
     latent_dim = 128
 
     # Config Model
@@ -71,15 +88,22 @@ def embed_model(input_shape, output_sequence_length, input_vocab_size, output_vo
         input_dim=input_vocab_size, output_dim=output_sequence_length, mask_zero=False
     )(inputs)
     bd_layer = Bidirectional(GRU(output_sequence_length))(embedding_layer)
-    encoding_layer = Dense(latent_dim, activation="relu")(bd_layer)
+    encoding_layer = sparsity.prune_low_magnitude(
+        Dense(latent_dim, activation="relu"), **pruning_params
+    )(bd_layer)
     decoding_layer = RepeatVector(output_sequence_length)(encoding_layer)
     output_layer = Bidirectional(GRU(latent_dim, return_sequences=True))(decoding_layer)
-    outputs = TimeDistributed(Dense(output_vocab_size, activation="softmax"))(output_layer)
+    outputs = TimeDistributed(
+        sparsity.prune_low_magnitude(
+            Dense(output_vocab_size, activation="softmax"), **pruning_params
+        )
+    )(output_layer)
 
-    # Create Model from parameters defined above
     model = Model(inputs=inputs, outputs=outputs)
     model.compile(
-        loss=sparse_categorical_crossentropy, optimizer=Adam(learning_rate), metrics=["accuracy"]
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+        optimizer=Adam(learning_rate),
+        metrics=["accuracy"],
     )
 
     return model
@@ -103,20 +127,37 @@ first_preproc_sentences, second_preproc_sentences, first_tokenizer, second_token
 tmp_x = pad(first_preproc_sentences, second_preproc_sentences.shape[1])
 tmp_x = tmp_x.reshape((-1, second_preproc_sentences.shape[-2]))
 
-simple_rnn_model = embed_model(
+rnn_model = embed_model(
     tmp_x.shape,
     second_preproc_sentences.shape[1],
     len(first_tokenizer.word_index) + 1,
     len(second_tokenizer.word_index) + 1,
 )
 
-try:
-    simple_rnn_model.summary()
+# Prunning model feature
+checkpoint = ModelCheckpoint(
+    best_model_path, save_best_only=True, save_weights_only=True, verbose=1
+)
+earlystop = EarlyStopping(monitor="val_loss", patience=5, verbose=1)
+reducelr = ReduceLROnPlateau(monitor="val_loss", factor=0.2, patience=2, min_lr=0.0001, verbose=1)
 
-    history = simple_rnn_model.fit(
-        tmp_x, second_preproc_sentences, batch_size=256, epochs=20, validation_split=0.2
+try:
+    if in_develop:
+        exit(0)
+    cleanScreen()
+    rnn_model.summary()
+
+    history = rnn_model.fit(
+        tmp_x,
+        second_preproc_sentences,
+        batch_size=4096,
+        epochs=20,
+        validation_split=0.2,
+        callbacks=[checkpoint, earlystop, reducelr, sparsity.UpdatePruningStep(),],
+        verbose=1,
     )
-    simple_rnn_model.save(model_path)
+    rnn_model = sparsity.strip_pruning(rnn_model.load_weights(best_model_path))
+    rnn_model.save(model_path)
 
     np.savetxt(
         f"./logs/{datetime.now().strftime('%d.%m.%Y %H-%M-%S')}.txt",

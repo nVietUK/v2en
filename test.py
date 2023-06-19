@@ -3,15 +3,16 @@ import tensorflow as tf
 import numpy as np
 from keras.utils import pad_sequences
 import yaml
+from tensorflow_model_optimization.sparsity import keras as sparsity
 
-with open('config.yml', 'r') as f:
+with open("config.yml", "r") as f:
     cfg = yaml.safe_load(f)
-target = cfg['v2en']['target']
+target = cfg["v2en"]["target"]
 val_cache_path = "./cache/var.pkl"
 model_path = "./models/model.keras"
 
 try:
-    rnn_model = tf.keras.saving.load_model(model_path)
+    rnn_model = sparsity.strip_pruning(tf.keras.saving.load_model(model_path))
     print("model loaded")
     with open(val_cache_path, "rb") as f:
         output_tokenizer, input_tokenizer, preproc_output_sentences = pickle.load(f)

@@ -1,22 +1,16 @@
-import os
 import yaml
-import requests
-import multiprocessing
 import multiprocessing.pool
 import time
-from difflib import SequenceMatcher
 import deep_translator
 import string
 import translators
-from html.parser import HTMLParser
-import langcodes
 import signal
 from v2enlib import *
 
 with open("config.yml", "r") as ymlfile:
     cfg = yaml.safe_load(ymlfile)
 target = cfg["v2en"]["target"]
-table_name = cfg['sqlite']['table_name']
+table_name = cfg["sqlite"]["table_name"]
 first_lang = target[:2]
 second_lang = target[-2:]
 accept_percentage = 0.65
@@ -96,90 +90,6 @@ def transIntoListPool(cmds):
     return [transIntoList(*cmd) for cmd in cmds]
 
 
-# utils
-def diffratio(x, y):
-    return SequenceMatcher(None, x, y).ratio()
-
-
-def isEmpty(path):
-    return os.stat(path).st_size == 0
-
-
-def signalHandler(sig, frame):
-    global main_execute
-    print("\tStop program!")
-    main_execute = False
-
-
-def convert(x: str) -> str:
-    # fix bad data
-    if "apos" in x or "quot" in x or "amp" in x:
-        return ""
-
-    x = x.replace("“", " “ ").replace("”", " ” ").replace("’", " ’ ")
-    for punc in string.punctuation:
-        x = x.replace(punc, f" {punc} ")
-    return x.lower().replace("  ", " ").replace("  ", " ")
-
-
-def isExistOnWiki(word: str, lang: str) -> bool:
-    display_name = langcodes.Language.make(language=lang).display_name()
-
-    class LanguageParser(HTMLParser):
-        def __init__(self):
-            super().__init__()
-            self.isExist = False
-
-        def handle_starttag(self, tag, attrs):
-            if tag == "a":
-                for attr in attrs:
-                    if attr[0] == "href" and f"#{display_name}" == attr[1]:
-                        self.isExist = True
-            if tag == "span":
-                for attr in attrs:
-                    if attr[0] == "id" and attr[1] == display_name:
-                        self.isExist = True
-
-    printInfo(isExistOnWiki.__name__, multiprocessing.current_process().name, debug)
-    response = requests.get(f"https://en.wiktionary.org/wiki/{word}")
-    parser = LanguageParser()
-    parser.feed(response.text)
-    return parser.isExist
-
-
-def cleanScreen() -> None:
-    if os.name == "nt":
-        os.system("cls")
-    else:
-        os.system("clear")
-
-
-def checkLangFile(*args):
-    for target in args:
-        if os.path.exists(f"./cache/{target}.dic"):
-            continue
-        open(f"./cache/{target}.dic", "w").close()
-
-
-def loadDictionary(path):
-    try:
-        if os.stat(path).st_size == 0:
-            return []
-        with open(path, "r") as f:
-            return [word.rstrip("\n") for word in f.read().splitlines(True)]
-    except Exception as e:
-        printError(loadDictionary.__name__, e, debug)
-
-
-def saveDictionary(path, dictionary):
-    try:
-        with open(path, "w") as f:
-            for e in dictionary:
-                f.write(e + "\n")
-    except Exception as e:
-        printError(saveDictionary.__name__, e, debug)
-
-
 # language utils
 def checkSpelling(text: str, dictionary: list, lang: str) -> str:
     printInfo(checkSpelling.__name__, multiprocessing.current_process().pid, debug)
@@ -192,9 +102,9 @@ def checkSpelling(text: str, dictionary: list, lang: str) -> str:
                 word in dictionary
                 or word.isnumeric()
                 or word in string.punctuation
-                or isExistOnWiki(word, lang)
-                or isExistOnWiki(f"{words[idx-1]} {word}", lang)
-                or (idx + 1 < len(words) and isExistOnWiki(f"{word} {words[idx+1]}", lang))
+                or isExistOnWiki(word, lang, debug)
+                or isExistOnWiki(f"{words[idx-1]} {word}", lang, debug)
+                or (idx + 1 < len(words) and isExistOnWiki(f"{word} {words[idx+1]}", lang, debug))
             ):
                 outstr += f"{word} "
             else:
@@ -257,7 +167,12 @@ def addSent(first_sent: str, second_sent: str):
                     VALUES(?,?,?)
                 """
                 cmds += [
-                    [sql_connection, table_command.format(table_name), (first_sent, second_sent, 1), debug]
+                    [
+                        sql_connection,
+                        table_command.format(table_name),
+                        (first_sent, second_sent, 1),
+                        debug,
+                    ]
                 ]
                 for first_tran, second_tran, first_rate, second_rate in zip(
                     first_trans, second_trans, first_ratio, second_ratio
@@ -267,12 +182,14 @@ def addSent(first_sent: str, second_sent: str):
                             [
                                 sql_connection,
                                 table_command.format(table_name),
-                                (first_sent, first_tran, 1), debug
+                                (first_sent, first_tran, 1),
+                                debug,
                             ],
                             [
                                 sql_connection,
                                 table_command.format(table_name),
-                                (second_tran, second_sent, 1), debug
+                                (second_tran, second_sent, 1),
+                                debug,
                             ],
                         ]
     if first_sent != "" and second_sent != "" and is_error:
@@ -293,8 +210,8 @@ def addSentPool(cmds: list):
 
 
 checkLangFile(first_lang, second_lang)
-first_dictionary = loadDictionary(first_dictionary_path)
-second_dictionary = loadDictionary(second_dictionary_path)
+first_dictionary = loadDictionary(first_dictionary_path, debug)
+second_dictionary = loadDictionary(second_dictionary_path, debug)
 signal.signal(signal.SIGINT, signalHandler)
 
 if __name__ == "__main__":
@@ -345,6 +262,6 @@ if __name__ == "__main__":
             with open(second_path, "w") as file:
                 file.writelines(saveOU[num_sent:])
 
-        saveDictionary(first_dictionary_path, first_dictionary)
-        saveDictionary(second_dictionary_path, second_dictionary)
+        saveDictionary(first_dictionary_path, first_dictionary, debug)
+        saveDictionary(second_dictionary_path, second_dictionary, debug)
         print(f"\t\t(mainModule) time consume: {(time.time()-time_start):0,.2f}")
