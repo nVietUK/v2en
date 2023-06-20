@@ -244,7 +244,7 @@ def addSent(input_sent: InputSent):
         ("True", lambda text: style(text, fg="bright_green")),
         ("N/A", lambda text: style(text, bg="red")),
     ]
-    logger.info(
+    logging.critical(
         columnar(
             data=print_data,
             headers=["From", "Source", "Target", "Is add?", "Accuracy?"],
@@ -268,12 +268,11 @@ def signalHandler(sig, frame):
     main_execute = False
 
 
-checkLangFile(first_lang, second_lang)
-first_dictionary = loadDictionary(first_dictionary_path)
-second_dictionary = loadDictionary(second_dictionary_path)
-signal.signal(signal.SIGINT, signalHandler)
-
 if __name__ == "__main__":
+    checkLangFile(first_lang, second_lang)
+    first_dictionary = loadDictionary(first_dictionary_path)
+    second_dictionary = loadDictionary(second_dictionary_path)
+    signal.signal(signal.SIGINT, signalHandler)
     sql_connection = getSQLCursor(cfg["sqlite"]["path"])
     createSQLtable(sql_connection, table_name)
     false_count = 0

@@ -9,17 +9,10 @@ import multiprocessing.pool
 import logging
 from addsent import target
 
-logger = logging.getLogger('my_logger')
-logger.setLevel(logging.DEBUG)
-fh = logging.FileHandler(f"./logs/{target}.log")
-fh.setLevel(logging.WARNING)
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s %(levelname)s\n%(message)s')
-fh.setFormatter(formatter)
-ch.setFormatter(formatter)
-logger.addHandler(fh)
-logger.addHandler(ch)
+logging.basicConfig(level=logging.CRITICAL,
+                    format='%(asctime)s %(levelname)s \n%(message)s',
+                    handlers=[logging.FileHandler(f"./logs/{target}.log"),
+                              logging.StreamHandler()])
 
 # debug def
 def printError(text, error, is_exit=True):
@@ -31,7 +24,7 @@ def printError(text, error, is_exit=True):
 
 
 def printInfo(name, pid):
-    logging.info(f"Dive into {name} with pid id: {pid}")
+    logging.debug(f"Dive into {name} with pid id: {pid}")
 
 
 # ask user defs
@@ -82,7 +75,7 @@ def createSQLtable(connection, table_name):
         printError(createSQLtable.__name__, e)
 
 
-def createOBJ(conn, sql, obj, debug):
+def createOBJ(conn, sql, obj):
     try:
         if obj[0] and obj[1]:
             conn.cursor().execute(sql, obj)
@@ -95,9 +88,9 @@ def createOBJ(conn, sql, obj, debug):
                 askUserStr("col_status").upper(),
                 str(askUserInt("col_value")),
             )
-            createOBJ(conn, sql, obj, debug)
+            createOBJ(conn, sql, obj)
     except Exception as e:
-        printError(createOBJ.__name__, e, debug)
+        printError(createOBJ.__name__, e)
 
 
 def createOBJPool(cmds, con):
