@@ -17,7 +17,6 @@ first_lang = target[:2]
 second_lang = target[-2:]
 accept_percentage = 0.65
 is_auto = True
-debug = False
 first_dictionary_path = f"./cache/{first_lang}.dic"
 second_dictionary_path = f"./cache/{second_lang}.dic"
 main_execute = True
@@ -70,7 +69,7 @@ def translatorsTrans(x: str, source: str, target: str, host: str) -> str:
             x, from_language=source, to_language=target, translator=host
         )
         if type(ou) != str:
-            printError(translatorsTrans.__name__, Exception("Type error"), False, True)
+            printError(translatorsTrans.__name__, Exception("Type error"), False)
             return deepTransGoogle(x, source, target)
         return ou
     except Exception as e:
@@ -110,7 +109,7 @@ def transIntoListPool(cmds):
 
 # language utils
 def checkSpelling(text: str, dictionary: list, lang: str) -> str:
-    printInfo(checkSpelling.__name__, multiprocessing.current_process().pid, debug)
+    printInfo(checkSpelling.__name__, multiprocessing.current_process().pid)
     word = ""
     try:
         words = text.split()
@@ -120,11 +119,11 @@ def checkSpelling(text: str, dictionary: list, lang: str) -> str:
                 word in dictionary
                 or word.isnumeric()
                 or word in string.punctuation
-                or isExistOnWiki(word, lang, debug)
-                or isExistOnWiki(f"{words[idx-1]} {word}", lang, debug)
+                or isExistOnWiki(word, lang)
+                or isExistOnWiki(f"{words[idx-1]} {word}", lang)
                 or (
                     idx + 1 < len(words)
-                    and isExistOnWiki(f"{word} {words[idx+1]}", lang, debug)
+                    and isExistOnWiki(f"{word} {words[idx+1]}", lang)
                 )
             ):
                 outstr += f"{word} "
@@ -140,7 +139,7 @@ def checkSpelling(text: str, dictionary: list, lang: str) -> str:
             False,
         )
     except Exception as e:
-        printError(checkSpelling.__name__, e, debug)
+        printError(checkSpelling.__name__, e)
     return ""
 
 
@@ -214,14 +213,12 @@ def addSent(input_sent: InputSent):
                         sql_connection,
                         table_command.format(table_name),
                         (input_sent.first, input_sent.second, 1),
-                        debug,
                     ]
                 ] + [
                     [
                         sql_connection,
                         table_command.format(table_name),
                         e.SQLFormat(),
-                        debug,
                     ]
                     if e.isAdd
                     else None
@@ -234,17 +231,26 @@ def addSent(input_sent: InputSent):
         ["Data set", input_sent.first, input_sent.second, is_agree, "N/A"]
     ] + [[e.isFrom, e.first, e.second, e.isAdd, e.accurate] for e in trans_data]
     print_patterns = [
-        ('google', googleTextStyle),
-        ('bing', lambda text: style(text, fg='blue')),
-        ('From', lambda text: style(text, bg='bright_black')),
-        ('Source', lambda text: style(text, bg='bright_black')),
-        ('Target', lambda text: style(text, bg='bright_black')),
-        ('Is add?', lambda text: style(text, bg='bright_black')),
-        ('Accuracy?', lambda text: style(text, bg='bright_black')),
-        ('False', lambda text: style(text, fg='bright_red')),
+        ("google", lambda text: style(text, bg="white")),
+        ("bing", lambda text: style(text, bg="blue")),
+        ("sogou", lambda text: style(text, bg='bright_yellow')),
+        ("alibaba", lambda text: style(text, bg='yellow')),
+        ("From", lambda text: style(text, bg="bright_black")),
+        ("Source", lambda text: style(text, bg="bright_black")),
+        ("Target", lambda text: style(text, bg="bright_black")),
+        ("Is add?", lambda text: style(text, bg="bright_black")),
+        ("Accuracy?", lambda text: style(text, bg="bright_black")),
+        ("False", lambda text: style(text, fg="bright_red")),
+        ("True", lambda text: style(text, fg="bright_green")),
+        ("N/A", lambda text: style(text, bg="red")),
     ]
-    print(columnar(data=print_data, headers=['From', "Source", "Target", "Is add?", "Accuracy?"], patterns=print_patterns))
-    print(f"\t\t({addSent.__name__}) time consume: {(time()-time_start):0,.2f}")
+    logger.info(
+        columnar(
+            data=print_data,
+            headers=["From", "Source", "Target", "Is add?", "Accuracy?"],
+            patterns=print_patterns,
+        )+f"\t({addSent.__name__}) time consume: {(time()-time_start):0,.2f}"
+    )
     return first_dump_sent, second_dump_sent, cmds, is_agree
 
 
@@ -263,13 +269,13 @@ def signalHandler(sig, frame):
 
 
 checkLangFile(first_lang, second_lang)
-first_dictionary = loadDictionary(first_dictionary_path, debug)
-second_dictionary = loadDictionary(second_dictionary_path, debug)
+first_dictionary = loadDictionary(first_dictionary_path)
+second_dictionary = loadDictionary(second_dictionary_path)
 signal.signal(signal.SIGINT, signalHandler)
 
 if __name__ == "__main__":
     sql_connection = getSQLCursor(cfg["sqlite"]["path"])
-    createSQLtable(sql_connection, table_name, debug)
+    createSQLtable(sql_connection, table_name)
     false_count = 0
 
     first_path, second_path = f"./data/{first_lang}.txt", f"./data/{second_lang}.txt"
@@ -302,7 +308,6 @@ if __name__ == "__main__":
                             "mainModule",
                             Exception("Too many fatal translation!"),
                             False,
-                            True,
                         )
                         main_execute = False
         createOBJPool(cmds, sql_connection)
@@ -320,6 +325,6 @@ if __name__ == "__main__":
             with open(second_path, "w") as file:
                 file.writelines(saveOU[num_sent:])
 
-        saveDictionary(first_dictionary_path, first_dictionary, debug)
-        saveDictionary(second_dictionary_path, second_dictionary, debug)
+        saveDictionary(first_dictionary_path, first_dictionary)
+        saveDictionary(second_dictionary_path, second_dictionary)
         print(f"\t\t(mainModule) time consume: {(time()-time_start):0,.2f}")

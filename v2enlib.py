@@ -6,23 +6,32 @@ import os
 import requests
 import string
 import multiprocessing.pool
+import logging
+from addsent import target
 
+logger = logging.getLogger('my_logger')
+logger.setLevel(logging.DEBUG)
+fh = logging.FileHandler(f"./logs/{target}.log")
+fh.setLevel(logging.WARNING)
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s %(levelname)s\n%(message)s')
+fh.setFormatter(formatter)
+ch.setFormatter(formatter)
+logger.addHandler(fh)
+logger.addHandler(ch)
 
 # debug def
-def printError(text, error, debug, is_exit=True, avoid_debug=False):
-    if not debug and not avoid_debug:
-        return
-    print(
+def printError(text, error, is_exit=True):
+    logging.warning(
         f"{'_'*50}\n\tExpectation while {text}\n\tError type: {type(error)}\n\t{error}\n{chr(8254)*50}"
     )
     if is_exit:
         exit(0)
 
 
-def printInfo(name, pid, debug):
-    if not debug:
-        return
-    print(f"Dive into {name} with pid id: {pid}")
+def printInfo(name, pid):
+    logging.info(f"Dive into {name} with pid id: {pid}")
 
 
 # ask user defs
@@ -58,7 +67,7 @@ def createSQLColumn(
         printError(createSQLColumn.__name__, e, debug)
 
 
-def createSQLtable(connection, table_name, debug):
+def createSQLtable(connection, table_name):
     sql_create_table = """CREATE TABLE IF NOT EXISTS {} (
                             Source LONGTEXT NOT NULL,
                             Target LONGTEXT NOT NULL,
@@ -70,7 +79,7 @@ def createSQLtable(connection, table_name, debug):
         connection.cursor().execute(sql_create_table)
         connection.commit()
     except Exception as e:
-        printError(createSQLtable.__name__, e, debug)
+        printError(createSQLtable.__name__, e)
 
 
 def createOBJ(conn, sql, obj, debug):
@@ -102,7 +111,7 @@ def getSQLCursor(path) -> sqlite3.Connection:
         print("Database created and Successfully Connected to SQLite")
         return sqliteConnection
     except Exception as e:
-        printError(getSQLCursor.__name__, e, True, True)
+        printError(getSQLCursor.__name__, e, True)
         exit(0)
 
 
@@ -132,7 +141,7 @@ def convert(x: str) -> str:
     return x.lower().replace("  ", " ").replace("  ", " ")
 
 
-def isExistOnWiki(word: str, lang: str, debug) -> bool:
+def isExistOnWiki(word: str, lang: str) -> bool:
     display_name = langcodes.Language.make(language=lang).display_name()
 
     class LanguageParser(HTMLParser):
@@ -150,7 +159,7 @@ def isExistOnWiki(word: str, lang: str, debug) -> bool:
                     if attr[0] == "id" and attr[1] == display_name:
                         self.isExist = True
 
-    printInfo(isExistOnWiki.__name__, multiprocessing.current_process().name, debug)
+    printInfo(isExistOnWiki.__name__, multiprocessing.current_process().name)
     response = requests.get(f"https://en.wiktionary.org/wiki/{word}")
     parser = LanguageParser()
     parser.feed(response.text)
@@ -171,20 +180,20 @@ def checkLangFile(*args):
         open(f"./cache/{target}.dic", "w").close()
 
 
-def loadDictionary(path, debug):
+def loadDictionary(path):
     try:
         if os.stat(path).st_size == 0:
             return []
         with open(path, "r") as f:
             return [word.rstrip("\n") for word in f.read().splitlines(True)]
     except Exception as e:
-        printError(loadDictionary.__name__, e, debug)
+        printError(loadDictionary.__name__, e)
 
 
-def saveDictionary(path, dictionary, debug):
+def saveDictionary(path, dictionary):
     try:
         with open(path, "w") as f:
             for e in dictionary:
                 f.write(e + "\n")
     except Exception as e:
-        printError(saveDictionary.__name__, e, debug)
+        printError(saveDictionary.__name__, e)
