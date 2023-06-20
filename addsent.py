@@ -20,7 +20,7 @@ is_auto = True
 first_dictionary_path = f"./cache/{first_lang}.dic"
 second_dictionary_path = f"./cache/{second_lang}.dic"
 main_execute = True
-num_sent = 30
+num_sent = 25
 false_allow = 50
 thread_alow = True
 """
@@ -233,8 +233,8 @@ def addSent(input_sent: InputSent):
     print_patterns = [
         ("google", lambda text: style(text, bg="white")),
         ("bing", lambda text: style(text, bg="blue")),
-        ("sogou", lambda text: style(text, bg='bright_yellow')),
-        ("alibaba", lambda text: style(text, bg='yellow')),
+        ("sogou", lambda text: style(text, bg="bright_yellow")),
+        ("alibaba", lambda text: style(text, bg="yellow")),
         ("From", lambda text: style(text, bg="bright_black")),
         ("Source", lambda text: style(text, bg="bright_black")),
         ("Target", lambda text: style(text, bg="bright_black")),
@@ -249,7 +249,9 @@ def addSent(input_sent: InputSent):
             data=print_data,
             headers=["From", "Source", "Target", "Is add?", "Accuracy?"],
             patterns=print_patterns,
-        )+f"\t({addSent.__name__}) time consume: {(time()-time_start):0,.2f}"
+            max_column_width=80
+        )
+        + f"\t({addSent.__name__}) time consume: {(time()-time_start):0,.2f}"
     )
     return first_dump_sent, second_dump_sent, cmds, is_agree
 
