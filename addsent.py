@@ -20,7 +20,7 @@ is_auto = True
 first_dictionary_path = f"./cache/{first_lang}.dic"
 second_dictionary_path = f"./cache/{second_lang}.dic"
 main_execute = True
-num_sent = 25
+num_sent = 200
 false_allow = 50
 thread_alow = True
 """
