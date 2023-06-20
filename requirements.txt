@@ -4,3 +4,4 @@ translators
 language-data
 langcodes
 tensorflow-model-optimization
+columnar

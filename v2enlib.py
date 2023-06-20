@@ -91,13 +91,8 @@ def createOBJ(conn, sql, obj, debug):
         printError(createOBJ.__name__, e, debug)
 
 
-def createOBJExecute(cmd):
-    return createOBJ(*cmd)
-
-
 def createOBJPool(cmds, con):
-    for cmd in cmds:
-        createOBJExecute(cmd)
+    [createOBJ(*cmd) for cmd in cmds]
     con.commit()
 
 
@@ -105,11 +100,10 @@ def getSQLCursor(path) -> sqlite3.Connection:
     try:
         sqliteConnection = sqlite3.connect(path)
         print("Database created and Successfully Connected to SQLite")
-    except sqlite3.Error as error:
-        printError(getSQLCursor.__name__, error, True, True)
+        return sqliteConnection
     except Exception as e:
         printError(getSQLCursor.__name__, e, True, True)
-    return sqliteConnection
+        exit(0)
 
 
 def getSQL(conn, request):
