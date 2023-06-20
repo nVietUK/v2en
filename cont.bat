@@ -1,1 +1,1 @@
-docker run --gpus all -it -v .:/v2en --cap-add=NET_ADMIN -e TZ=Asia/Ho_Chi_Minh nvietuk/v2en:test
+docker run --gpus all -it -v .:/v2en --cap-add=NET_ADMIN -e TZ=Asia/Ho_Chi_Minh nvietuk/v2en:latest

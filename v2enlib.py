@@ -127,12 +127,6 @@ def isEmpty(path):
     return os.stat(path).st_size == 0
 
 
-def signalHandler(sig, frame):
-    global main_execute
-    print("\tStop program!")
-    main_execute = False
-
-
 def convert(x: str) -> str:
     # fix bad data
     if "apos" in x or "quot" in x or "amp" in x:

@@ -1,9 +1,9 @@
 import yaml
-import multiprocessing.pool
-import time
-import deep_translator
+from multiprocessing.pool import ThreadPool
+from time import time
+from deep_translator import GoogleTranslator
 import string
-import translators
+from translators import translate_text
 import signal
 from v2enlib import *
 
@@ -21,7 +21,7 @@ second_dictionary_path = f"./cache/{second_lang}.dic"
 main_execute = True
 num_sent = 30
 false_allow = 50
-thread_alow = True
+thread_alow = False
 """
     translate service:
     - google
@@ -35,7 +35,7 @@ translators_target = ["google", "bing", "sogou", "alibaba"]
 # translate def
 def deepTransGoogle(x: str, source: str, target: str) -> str:
     try:
-        return deep_translator.GoogleTranslator(source=source, target=target).translate(x)
+        return GoogleTranslator(source=source, target=target).translate(x)
     except Exception as e:
         printError(deepTransGoogle.__name__, e, False)
         return ""
@@ -43,7 +43,7 @@ def deepTransGoogle(x: str, source: str, target: str) -> str:
 
 def translatorsTrans(x: str, source: str, target: str, host: str) -> str:
     try:
-        ou = translators.translate_text(
+        ou = translate_text(
             x, from_language=source, to_language=target, translator=host
         )
         if type(ou) != str:
@@ -61,14 +61,15 @@ def translatorsTransExecute(cmd):
 
 def translatorsTransPool(cmds) -> list:
     if thread_alow:
-        return multiprocessing.pool.ThreadPool(processes=len(cmds) + 2).map(
+        return ThreadPool(processes=len(cmds) + 2).map(
             translatorsTransExecute, cmds
         )
     return [translatorsTrans(*cmd) for cmd in cmds]
 
 
 def transIntoList(sent, source_lang, target_lang, target_dictionary):
-    return checkSpellingPool(
+    start = time()
+    ou = checkSpellingPool(
         [
             [convert(trans), target_dictionary, target_lang]
             for trans in translatorsTransPool(
@@ -76,6 +77,8 @@ def transIntoList(sent, source_lang, target_lang, target_dictionary):
             )
         ]
     )
+    print(f"{transIntoList.__name__} ({time()-start})")
+    return ou
 
 
 def transIntoListExecute(cmd):
@@ -84,7 +87,7 @@ def transIntoListExecute(cmd):
 
 def transIntoListPool(cmds):
     if thread_alow:
-        return multiprocessing.pool.ThreadPool(processes=len(cmds) + 2).map(
+        return ThreadPool(processes=len(cmds) + 2).map(
             transIntoListExecute, cmds
         )
     return [transIntoList(*cmd) for cmd in cmds]
@@ -127,14 +130,14 @@ def checkSpellingExecute(cmd):
 
 def checkSpellingPool(cmds):
     if thread_alow:
-        return multiprocessing.pool.ThreadPool(processes=len(cmds) + 2).map(
+        return ThreadPool(processes=len(cmds) + 2).map(
             checkSpellingExecute, cmds
         )
     return [checkSpelling(*cmd) for cmd in cmds]
 
 
 def addSent(first_sent: str, second_sent: str):
-    time_start = time.time()
+    time_start = time()
     is_error, is_agree, first_dump_sent, second_dump_sent, cmds = True, False, "", "", []
     first_sent, second_sent = checkSpellingPool(
         [
@@ -195,7 +198,7 @@ def addSent(first_sent: str, second_sent: str):
     if first_sent != "" and second_sent != "" and is_error:
         first_dump_sent, second_dump_sent = first_sent, second_sent
 
-    print(f"\t({(time.time()-time_start):0,.2f}) ({is_agree}) >> {first_sent} | {second_sent}")
+    print(f"\t({(time()-time_start):0,.2f}) ({is_agree}) >> {first_sent} | {second_sent}")
     return first_dump_sent, second_dump_sent, cmds, is_agree
 
 
@@ -207,6 +210,12 @@ def addSentPool(cmds: list):
     if thread_alow:
         return multiprocessing.pool.ThreadPool(processes=len(cmds) + 2).map(addSentExecute, cmds)
     return [addSent(*cmd) for cmd in cmds]
+
+
+def signalHandler(sig, frame):
+    global main_execute
+    print("\tStop program!")
+    main_execute = False
 
 
 checkLangFile(first_lang, second_lang)
@@ -221,7 +230,7 @@ if __name__ == "__main__":
 
     first_path, second_path = f"./data/{first_lang}.txt", f"./data/{second_lang}.txt"
     while main_execute:
-        time_start = time.time()
+        time_start = time()
         if isEmpty(first_path) or isEmpty(second_path):
             print("Done!")
             exit()
@@ -264,4 +273,4 @@ if __name__ == "__main__":
 
         saveDictionary(first_dictionary_path, first_dictionary, debug)
         saveDictionary(second_dictionary_path, second_dictionary, debug)
-        print(f"\t\t(mainModule) time consume: {(time.time()-time_start):0,.2f}")
+        print(f"\t\t(mainModule) time consume: {(time()-time_start):0,.2f}")
