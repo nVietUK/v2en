@@ -20,7 +20,7 @@ is_auto = True
 first_dictionary_path = f"./cache/{first_lang}.dic"
 second_dictionary_path = f"./cache/{second_lang}.dic"
 main_execute = True
-num_sent = 200
+num_sent = 40
 false_allow = 50
 thread_alow = True
 """
@@ -29,8 +29,9 @@ thread_alow = True
     - bing
     - alibaba
     - sogou
+    - myMemory
 """
-translators_target = ["google", "bing", "sogou", "alibaba"]
+translators_target = ["google", "bing", "sogou", "alibaba",]
 
 
 class InputSent:
@@ -41,9 +42,9 @@ class InputSent:
         isFrom: str = "",
         accurate: float = 0,
     ) -> None:
-        self.isFrom = "Data set" if not isFrom else isFrom
-        self.first = "N/A" if not first else first
-        self.second = "N/A" if not second else second
+        self.isFrom = isFrom or "Data set"
+        self.first = first or "N/A"
+        self.second = second or "N/A"
         self.accurate = accurate
         self.isAdd = accurate > accept_percentage
 
@@ -66,7 +67,7 @@ def deepTransGoogle(x: str, source: str, target: str) -> str:
 def translatorsTrans(x: str, source: str, target: str, host: str) -> str:
     try:
         ou = translate_text(
-            x, from_language=source, to_language=target, translator=host
+            x, from_language=source, to_language=target, translator=host, 
         )
         if type(ou) != str:
             printError(translatorsTrans.__name__, Exception("Type error"), False)
@@ -96,7 +97,7 @@ def transIntoList(sent, source_lang, target_lang, target_dictionary):
             )
         ]
     )
-    return [(sou, host) for sou, host in zip(ou, translators_target)]
+    return list(zip(ou, translators_target))
 
 
 def transIntoListPool(cmds):
