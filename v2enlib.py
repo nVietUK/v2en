@@ -3,33 +3,35 @@ from difflib import SequenceMatcher
 from html.parser import HTMLParser
 import langcodes
 import os
-import requests
 import string
-import multiprocessing.pool
 from addsent import target
+import httpx
+from functools import lru_cache
+from time import time
 
 
 class Logging:
-    def __init__(self) -> None:
-        self.logfile = open(f"./logs/{target}.log", "a")
+    def __init__(self, target: str) -> None:
+        self.file_path = f"./logs/{target}.log"
 
-    def toFile(self, text: str) -> None:
-        self.logfile.write(text + "\n")
+    def to_file(self, text: str) -> None:
+        with open(self.file_path, "a") as logfile:
+            logfile.write(text + "\n")
 
-    def toConsole(self, text: str) -> None:
+    def to_console(self, text: str) -> None:
         print(text)
 
-    def toBoth(self, text: str) -> None:
-        self.toConsole(text)
-        self.toFile(text)
+    def to_both(self, text: str) -> None:
+        self.to_console(text)
+        self.to_file(text)
 
 
-logging = Logging()
+logging = Logging(target)
 
 
 # debug def
 def printError(text, error, is_exit=True):
-    logging.toFile(
+    logging.to_file(
         f"{'_'*50}\n\tExpectation while {text}\n\tError type: {type(error)}\n\t{error}\n{chr(8254)*50}"
     )
     if is_exit:
@@ -40,39 +42,7 @@ def printInfo(name, pid):
     logging.toFile(f"Dive into {name} with pid id: {pid}")
 
 
-# ask user defs
-def askUserStr(name_value):
-    answer = input(f"\t{name_value} >> ")
-    return str(answer)
-
-
-def askUserInt(name_value):
-    answer = input(f"\t{name_value} >> ")
-    return int(answer)
-
-
-def askUserYN(message):
-    is_agree = input(f"{message} (Y/n) ")
-    return is_agree.lower() == "y" or is_agree == ""
-
-
 # sqlite3 defs
-def createSQLColumn(
-    conn, col_name, col_type, table_name, debug, col_status="NOT NULL", col_value="N/A"
-):
-    try:
-        conn.cursor().execute(
-            """
-            ALTER TABLE {}
-            ADD {} {} {} DEFAULT {}
-        """.format(
-                table_name, col_name, col_type, col_status, col_value
-            )
-        )
-    except Exception as e:
-        printError(createSQLColumn.__name__, e, debug)
-
-
 def createSQLtable(connection, table_name):
     sql_create_table = """CREATE TABLE IF NOT EXISTS {} (
                             Source LONGTEXT NOT NULL,
@@ -92,16 +62,6 @@ def createOBJ(conn, sql, obj):
     try:
         if obj[0] and obj[1]:
             conn.cursor().execute(sql, obj)
-    except sqlite3.OperationalError as e:
-        if "no column" in str(e):
-            createSQLColumn(
-                conn,
-                str(e).split()[-1],
-                askUserStr("col_type").upper(),
-                askUserStr("col_status").upper(),
-                str(askUserInt("col_value")),
-            )
-            createOBJ(conn, sql, obj)
     except Exception as e:
         printError(createOBJ.__name__, e)
 
@@ -147,36 +107,24 @@ def convert(x: str) -> str:
     return x.lower().replace("  ", " ").replace("  ", " ")
 
 
+@lru_cache(maxsize=1024)
+def get_wiktionary_headers(word: str) -> httpx.Response:
+    return httpx.get(f"https://en.wiktionary.org/wiki/{word}")
+
+
 def isExistOnWiki(word: str, lang: str) -> bool:
     display_name = langcodes.Language.make(language=lang).display_name()
 
-    class LanguageParser(HTMLParser):
-        def __init__(self):
-            super().__init__()
-            self.isExist = False
+    response = get_wiktionary_headers(word)
+    isExist = (
+        f'href="#{display_name}"' in response.headers.get("link", "")
+        or f'id="{display_name}"' in response.text
+    )
 
-        def handle_starttag(self, tag, attrs):
-            if tag == "a":
-                for attr in attrs:
-                    if attr[0] == "href" and f"#{display_name}" == attr[1]:
-                        self.isExist = True
-            if tag == "span":
-                for attr in attrs:
-                    if attr[0] == "id" and attr[1] == display_name:
-                        self.isExist = True
-
-    printInfo(isExistOnWiki.__name__, multiprocessing.current_process().name)
-    response = requests.get(f"https://en.wiktionary.org/wiki/{word}")
-    parser = LanguageParser()
-    parser.feed(response.text)
-    return parser.isExist
-
+    return isExist
 
 def cleanScreen() -> None:
-    if os.name == "nt":
-        os.system("cls")
-    else:
-        os.system("clear")
+    os.system("cls" if os.name == "nt" else "clear")
 
 
 def checkLangFile(*args):
@@ -203,3 +151,7 @@ def saveDictionary(path, dictionary):
                 f.write(e + "\n")
     except Exception as e:
         printError(saveDictionary.__name__, e)
+def timing(func, *args):
+    time_start = time()
+    func(*args)
+    logging.to_file(func.__name__+" "+time()-time_start)

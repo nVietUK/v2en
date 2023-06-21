@@ -3,5 +3,5 @@ pyyaml
 translators
 langcodes
 tensorflow-model-optimization
-columnar
 language-data
+tabulate
