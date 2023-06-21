@@ -6,17 +6,30 @@ import os
 import requests
 import string
 import multiprocessing.pool
-import logging
 from addsent import target
 
-logging.basicConfig(level=logging.CRITICAL,
-                    format='%(asctime)s %(levelname)s \n%(message)s',
-                    handlers=[logging.FileHandler(f"./logs/{target}.log"),
-                              logging.StreamHandler()])
+
+class Logging:
+    def __init__(self) -> None:
+        self.logfile = open(f"./logs/{target}.log", "a")
+
+    def toFile(self, text: str) -> None:
+        self.logfile.write(text + "\n")
+
+    def toConsole(self, text: str) -> None:
+        print(text)
+
+    def toBoth(self, text: str) -> None:
+        self.toConsole(text)
+        self.toFile(text)
+
+
+logging = Logging()
+
 
 # debug def
 def printError(text, error, is_exit=True):
-    logging.warning(
+    logging.toFile(
         f"{'_'*50}\n\tExpectation while {text}\n\tError type: {type(error)}\n\t{error}\n{chr(8254)*50}"
     )
     if is_exit:
@@ -24,7 +37,7 @@ def printError(text, error, is_exit=True):
 
 
 def printInfo(name, pid):
-    logging.debug(f"Dive into {name} with pid id: {pid}")
+    logging.toFile(f"Dive into {name} with pid id: {pid}")
 
 
 # ask user defs

@@ -110,7 +110,6 @@ def transIntoListPool(cmds):
 
 # language utils
 def checkSpelling(text: str, dictionary: list, lang: str) -> str:
-    printInfo(checkSpelling.__name__, multiprocessing.current_process().pid)
     word = ""
     try:
         words = text.split()
@@ -245,7 +244,7 @@ def addSent(input_sent: InputSent):
         ("True", lambda text: style(text, fg="bright_green")),
         ("N/A", lambda text: style(text, bg="red")),
     ]
-    logging.critical(
+    logging.toBoth(
         columnar(
             data=print_data,
             headers=["From", "Source", "Target", "Is add?", "Accuracy?"],
@@ -267,7 +266,7 @@ def addSentPool(cmds: list):
 
 def signalHandler(sig, frame):
     global main_execute
-    print("\tStop program!")
+    logging.toBoth("\tStop program!")
     main_execute = False
 
 
@@ -284,7 +283,7 @@ if __name__ == "__main__":
     while main_execute:
         time_start = time()
         if isEmpty(first_path) or isEmpty(second_path):
-            print("Done!")
+            logging.toBoth("Done!")
             exit()
 
         first_dump_sent, second_dump_sent, cmds = [], [], []
@@ -329,4 +328,4 @@ if __name__ == "__main__":
 
         saveDictionary(first_dictionary_path, first_dictionary)
         saveDictionary(second_dictionary_path, second_dictionary)
-        print(f"\t\t(mainModule) time consume: {(time()-time_start):0,.2f}")
+        logging.toBoth(f"\t\t(mainModule) time consume: {(time()-time_start):0,.2f}")
