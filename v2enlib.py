@@ -1,13 +1,9 @@
-import sqlite3
+import os, string, httpx, langcodes, sqlite3
 from difflib import SequenceMatcher
-from html.parser import HTMLParser
-import langcodes
-import os
-import string
 from addsent import target
-import httpx
 from functools import lru_cache
-from time import time
+from time import time 
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 
 
 class Logging:
@@ -39,7 +35,7 @@ def printError(text, error, is_exit=True):
 
 
 def printInfo(name, pid):
-    logging.toFile(f"Dive into {name} with pid id: {pid}")
+    logging.to_file(f"Dive into {name} with pid id: {pid}")
 
 
 # sqlite3 defs
@@ -116,12 +112,11 @@ def isExistOnWiki(word: str, lang: str) -> bool:
     display_name = langcodes.Language.make(language=lang).display_name()
 
     response = get_wiktionary_headers(word)
-    isExist = (
+    return (
         f'href="#{display_name}"' in response.headers.get("link", "")
         or f'id="{display_name}"' in response.text
     )
 
-    return isExist
 
 def cleanScreen() -> None:
     os.system("cls" if os.name == "nt" else "clear")
@@ -151,7 +146,35 @@ def saveDictionary(path, dictionary):
                 f.write(e + "\n")
     except Exception as e:
         printError(saveDictionary.__name__, e)
-def timing(func, *args):
+
+
+def timming(func, *args):
     time_start = time()
-    func(*args)
-    logging.to_file(func.__name__+" "+time()-time_start)
+    logging.to_console(f"{func.__name__} is timming")
+    ou = func(*args)
+    logging.to_console(f"{func.__name__}: {time() - time_start}")
+    return ou
+
+
+def function_timeout(s):
+    def outer(fn):
+        def inner(*args, **kwargs):
+            executor = ThreadPoolExecutor()
+            try:
+                future = executor.submit(fn, *args, **kwargs)
+                return future.result(timeout=s)
+            except TimeoutError:
+                return kwargs['default_value']
+            finally:
+                executor.shutdown(wait=False)
+
+        return inner
+
+    return outer
+
+
+def func_timeout(timeout, func, *args, **kargs):
+    @function_timeout(timeout)
+    def execute(func, *args, **kargs):
+        return func(*args, **kargs)
+    return execute(func, *args, **kargs)

@@ -5,13 +5,13 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Current File",
+            "name": "Python: Debug addsent",
             "type": "python",
             "request": "launch",
-            "program": "${file}",
+            "program": "addsent.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "subProcess": true
+            "subProcess": true,
         }
     ]
 }

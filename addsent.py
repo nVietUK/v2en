@@ -1,13 +1,13 @@
 import yaml
 from multiprocessing.pool import ThreadPool
-from time import time
 from deep_translator import GoogleTranslator
 import string
-from translators import translate_text
-import signal
+from translators.server import TranslatorsServer
+import translators.server
+import signal, requests
 from v2enlib import *
-from columnar import columnar
-from click import style
+from tabulate import tabulate
+
 
 with open("config.yml", "r") as ymlfile:
     cfg = yaml.safe_load(ymlfile)
@@ -20,18 +20,11 @@ is_auto = True
 first_dictionary_path = f"./cache/{first_lang}.dic"
 second_dictionary_path = f"./cache/{second_lang}.dic"
 main_execute = True
-num_sent = 40
-false_allow = 50
+num_sent = 20
+false_allow = num_sent / 3 * 2
 thread_alow = True
-"""
-    translate service:
-    - google
-    - bing
-    - alibaba
-    - sogou
-    - myMemory
-"""
-translators_target = ["google", "bing", "sogou", "alibaba",]
+trans_timeout = 8
+translator = TranslatorsServer()
 
 
 class InputSent:
@@ -64,27 +57,57 @@ def deepTransGoogle(x: str, source: str, target: str) -> str:
         return ""
 
 
-def translatorsTrans(x: str, source: str, target: str, host: str) -> str:
+def translatorsTrans(trans, cmd: list, trans_timeout, isDived: bool = False):
     try:
-        ou = translate_text(
-            x, from_language=source, to_language=target, translator=host, 
+        return func_timeout(
+            trans_timeout,
+            trans,
+            query_text=cmd[0],
+            from_language=cmd[1],
+            to_language=cmd[2],
+            default_value="",
         )
-        if type(ou) != str:
-            printError(translatorsTrans.__name__, Exception("Type error"), False)
-            return deepTransGoogle(x, source, target)
-        return ou
+    except translators.server.TranslatorError as e:
+        if not isDived:
+            return _extracted_from_translatorsTrans_13(cmd, e, trans, trans_timeout/2)
+        return ""
+    except requests.exceptions.JSONDecodeError:
+        return ""
     except Exception as e:
         printError(translatorsTrans.__name__, e, False)
-        return deepTransGoogle(x, source, target)
+        return ""
 
 
-def translatorsTransPool(cmds) -> list:
+# TODO Rename this here and in `translatorsTrans`
+def _extracted_from_translatorsTrans_13(cmd, e, trans, trans_timeout):
+    try:
+        tcmd, execute = cmd.copy(), False
+        if (e.args[0]).find("vie") != -1:
+            tcmd[2 if (e.args[0]).find("to_language") != -1 else 1] = "vie"
+            execute = True
+
+        if (e.args[0]).find("vi_VN") != -1:
+            tcmd[2 if (e.args[0]).find("to_language") != -1 else 1] = "vi_VN"
+            execute = True
+
+        if (e.args[0]).find("vi-VN") != -1:
+            tcmd[2 if (e.args[0]).find("to_language") != -1 else 1] = "vi-VN"
+            execute = True
+        return translatorsTrans(trans, tcmd, trans_timeout, True) if execute else ""
+    except IndexError:
+        return ''
+
+def translatorsTransPool(cmd: list) -> list:
     return (
-        ThreadPool(processes=len(cmds) + 2).map(
-            lambda cmd: translatorsTrans(*cmd), cmds
+        ThreadPool(processes=len(translator.translators_dict)).map(
+            lambda cmd: translatorsTrans(*cmd, trans_timeout=trans_timeout),
+            [[trans, cmd] for name, trans in translator.translators_dict.items()],
         )
         if thread_alow
-        else [translatorsTrans(*cmd) for cmd in cmds]
+        else [
+            translatorsTrans(trans, cmd, trans_timeout)
+            for name, trans in translator.translators_dict.items()
+        ]
     )
 
 
@@ -92,17 +115,15 @@ def transIntoList(sent, source_lang, target_lang, target_dictionary):
     ou = checkSpellingPool(
         [
             [convert(e), target_dictionary, target_lang]
-            for e in translatorsTransPool(
-                [(sent, source_lang, target_lang, host) for host in translators_target]
-            )
-        ]
+            for e in translatorsTransPool([sent, source_lang, target_lang])
+        ],
     )
-    return list(zip(ou, translators_target))
+    return list(zip(ou, translator.translators_dict.keys()))
 
 
 def transIntoListPool(cmds):
     return (
-        ThreadPool(processes=len(cmds) + 2).map(lambda cmd: transIntoList(*cmd), cmds)
+        ThreadPool(processes=len(cmds)).map(lambda cmd: transIntoList(*cmd), cmds)
         if thread_alow
         else [transIntoList(*cmd) for cmd in cmds]
     )
@@ -145,7 +166,7 @@ def checkSpelling(text: str, dictionary: list, lang: str) -> str:
 
 def checkSpellingPool(cmds):
     return (
-        ThreadPool(processes=len(cmds) + 2).map(lambda cmd: checkSpelling(*cmd), cmds)
+        ThreadPool(processes=len(cmds)).map(lambda cmd: checkSpelling(*cmd), cmds)
         if thread_alow
         else [checkSpelling(*cmd) for cmd in cmds]
     )
@@ -172,101 +193,82 @@ def addSent(input_sent: InputSent):
     )
     if input_sent.isValid():
         is_error = True
-        try:
-            first_trans, second_trans = transIntoListPool(
-                [
-                    [input_sent.first, first_lang, second_lang, second_dictionary],
-                    [input_sent.second, second_lang, first_lang, first_dictionary],
-                ]
+        first_trans, second_trans = transIntoListPool(
+            [
+                [input_sent.first, first_lang, second_lang, second_dictionary],
+                [input_sent.second, second_lang, first_lang, first_dictionary],
+            ],
+        )
+        trans_data = [
+            InputSent(
+                input_sent.first,
+                first_tran[0],
+                first_tran[1],
+                diffratio(input_sent.second, first_tran[0]),
             )
-        except Exception as e:
-            printError("translate section", e, False)
-        else:
-            trans_data = [
-                InputSent(
-                    input_sent.first,
-                    first_tran[0],
-                    first_tran[1],
-                    diffratio(input_sent.second, first_tran[0]),
-                )
-                for first_tran in first_trans
-            ] + [
-                InputSent(
-                    second_tran[0],
-                    input_sent.second,
-                    second_tran[1],
-                    diffratio(input_sent.first, second_tran[0]),
-                )
-                for second_tran in second_trans
-            ]
+            for first_tran in first_trans
+        ] + [
+            InputSent(
+                second_tran[0],
+                input_sent.second,
+                second_tran[1],
+                diffratio(input_sent.first, second_tran[0]),
+            )
+            for second_tran in second_trans
+        ]
 
-            if any(e.isAdd for e in trans_data):
-                is_agree = True
-                is_error = False
-            if is_agree and not is_error:
-                table_command = """
-                    INSERT INTO {}(Source, Target, Verify)
-                    VALUES(?,?,?)
-                """
-                cmds = [
-                    [
-                        sql_connection,
-                        table_command.format(table_name),
-                        (input_sent.first, input_sent.second, 1),
-                    ]
-                ] + [
-                    [
-                        sql_connection,
-                        table_command.format(table_name),
-                        e.SQLFormat(),
-                    ]
-                    if e.isAdd
-                    else None
-                    for e in trans_data
+        if any(e.isAdd for e in trans_data):
+            is_agree = True
+            is_error = False
+        if is_agree and not is_error:
+            table_command = """
+                INSERT INTO {}(Source, Target, Verify)
+                VALUES(?,?,?)
+            """
+            cmds = [
+                [
+                    sql_connection,
+                    table_command.format(table_name),
+                    (input_sent.first, input_sent.second, 1),
                 ]
+            ] + [
+                [
+                    sql_connection,
+                    table_command.format(table_name),
+                    e.SQLFormat(),
+                ]
+                for e in trans_data
+                if e.isAdd
+            ]
         if is_error:
             first_dump_sent, second_dump_sent = input_sent.first, input_sent.second
 
     print_data = [
-        ["Data set", input_sent.first, input_sent.second, is_agree, "N/A"]
-    ] + [[e.isFrom, e.first, e.second, e.isAdd, e.accurate] for e in trans_data]
-    print_patterns = [
-        ("google", lambda text: style(text, bg="white")),
-        ("bing", lambda text: style(text, bg="blue")),
-        ("sogou", lambda text: style(text, bg="bright_yellow")),
-        ("alibaba", lambda text: style(text, bg="yellow")),
-        ("From", lambda text: style(text, bg="bright_black")),
-        ("Source", lambda text: style(text, bg="bright_black")),
-        ("Target", lambda text: style(text, bg="bright_black")),
-        ("Is add?", lambda text: style(text, bg="bright_black")),
-        ("Accuracy?", lambda text: style(text, bg="bright_black")),
-        ("False", lambda text: style(text, fg="bright_red")),
-        ("True", lambda text: style(text, fg="bright_green")),
-        ("N/A", lambda text: style(text, bg="red")),
-    ]
-    logging.toBoth(
-        columnar(
-            data=print_data,
-            headers=["From", "Source", "Target", "Is add?", "Accuracy?"],
-            patterns=print_patterns,
-            max_column_width=80
+        ["Data set", input_sent.first, input_sent.second, "N/A"]
+    ] + [[e.isFrom, e.first, e.second, e.accurate] for e in trans_data if e.isAdd]
+    logging.to_both(
+        tabulate(
+            tabular_data=print_data,
+            headers=["From", "Source", "Target", "Accuracy?"],
+            tablefmt="fancy_grid",
+            showindex="always",
+            maxcolwidths=[None, None, 75, 75, 10],
+            floatfmt=(".2f" * 5),
         )
-        + f"\t({addSent.__name__}) time consume: {(time()-time_start):0,.2f}"
+        + f"\n\t({addSent.__name__}) time consume: {(time()-time_start):0,.2f}"
     )
     return first_dump_sent, second_dump_sent, cmds, is_agree
 
 
 def addSentPool(cmds: list):
-    if thread_alow:
-        return multiprocessing.pool.ThreadPool(processes=len(cmds) + 2).map(
-            addSent, cmds
-        )
+    if False:
+        return ThreadPool(processes=len(cmds)).map(addSent, cmds)
     return [addSent(cmd) for cmd in cmds]
 
 
 def signalHandler(sig, frame):
     global main_execute
-    logging.toBoth("\tStop program!")
+    logging.to_both("\tStop program!")
     main_execute = False
 
 
@@ -283,7 +285,7 @@ if __name__ == "__main__":
     while main_execute:
         time_start = time()
         if isEmpty(first_path) or isEmpty(second_path):
-            logging.toBoth("Done!")
+            logging.to_both("Done!")
             exit()
 
         first_dump_sent, second_dump_sent, cmds = [], [], []
@@ -328,4 +330,4 @@ if __name__ == "__main__":
 
         saveDictionary(first_dictionary_path, first_dictionary)
         saveDictionary(second_dictionary_path, second_dictionary)
-        logging.toBoth(f"\t\t(mainModule) time consume: {(time()-time_start):0,.2f}")
+        logging.to_both(f"\t\t(mainModule) time consume: {(time()-time_start):0,.2f}")
