@@ -48,7 +48,7 @@ RUN mkdir /var/run/dbus && \
     echo "xfce4-session" >> /etc/skel/.Xsession
 EXPOSE 3389
 
-COPY ./run.sh /usr/bin/
+COPY ./.sh/run.sh /usr/bin/
 RUN chmod +x /usr/bin/run.sh
 
 RUN service ssh start

@@ -3,7 +3,7 @@ from deep_translator import GoogleTranslator
 from translators.server import TranslatorsServer
 from v2enlib import *
 from tabulate import tabulate
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 
 
 with open("config.yml", "r") as ymlfile:
@@ -43,6 +43,17 @@ class InputSent:
 
     def SQLFormat(self) -> tuple:
         return (self.first, self.second, 1 if self.isAdd else 0)
+
+
+# thread utils
+@measure
+def funcPool(func, cmds):
+    if thread_alow:
+        with ThreadPoolExecutor(len(cmds)) as ex:
+            result = list(ex.map(func, cmds))
+            ex.shutdown(wait=False)
+            return result
+    return [func(cmd) for cmd in cmds]
 
 
 # translate def
@@ -100,32 +111,19 @@ def translatorsTransExecutor(cmd, *args, **kwargs):
     return translatorsTrans(*cmd, *args, **kwargs)
 
 
-def translatorsTransPool(cmd: list) -> list:
-    with ThreadPoolExecutor(len(translator.translators_dict)) as ex:
-        return (
-            list(
-                ex.map(
-                    translatorsTransExecutor,
-                    [
-                        [trans, cmd, trans_timeout]
-                        for name, trans in translator.translators_dict.items()
-                    ],
-                )
-            )
-            if thread_alow
-            else [
-                translatorsTrans(trans, cmd, trans_timeout)
-                for name, trans in translator.translators_dict.items()
-            ]
-        )
-
-
 @measure
 def transIntoList(sent, source_lang, target_lang, target_dictionary):
-    ou = checkSpellingPool(
+    ou = funcPool(
+        checkSpellingExecutor,
         [
             [convert(e), target_dictionary, target_lang]
-            for e in translatorsTransPool([sent, source_lang, target_lang])
+            for e in funcPool(
+                translatorsTransExecutor,
+                [
+                    [trans, [sent, source_lang, target_lang], trans_timeout]
+                    for name, trans in translator.translators_dict.items()
+                ],
+            )
         ],
     )
     return list(zip(ou, translator.translators_dict.keys()))
@@ -133,15 +131,6 @@ def transIntoList(sent, source_lang, target_lang, target_dictionary):
 
 def transIntoListExecutor(cmd):
     return transIntoList(*cmd)
-
-
-def transIntoListPool(cmds):
-    with ProcessPoolExecutor(len(cmds)) as ex:
-        return (
-            list(ex.map(transIntoListExecutor, cmds))
-            if thread_alow
-            else [transIntoList(*cmd) for cmd in cmds]
-        )
 
 
 # language utils
@@ -184,15 +173,6 @@ def checkSpellingExecutor(cmd):
     return checkSpelling(*cmd)
 
 
-def checkSpellingPool(cmds):
-    with ThreadPoolExecutor(len(cmds)) as ex:
-        return (
-            list(ex.map(checkSpellingExecutor, cmds))
-            if thread_alow
-            else [checkSpelling(*cmd) for cmd in cmds]
-        )
-
-
 @measure
 def addSent(input_sent: InputSent):
     time_start = time.time()
@@ -203,7 +183,8 @@ def addSent(input_sent: InputSent):
         [],
         [],
     )
-    input_sent.first, input_sent.second = checkSpellingPool(
+    input_sent.first, input_sent.second = funcPool(
+        checkSpellingExecutor,
         [
             [convert(input_sent.first.replace("\n", "")), first_dictionary, first_lang],
             [
@@ -211,11 +192,12 @@ def addSent(input_sent: InputSent):
                 second_dictionary,
                 second_lang,
             ],
-        ]
+        ],
     )
     if input_sent.isValid():
         is_error = True
-        first_trans, second_trans = transIntoListPool(
+        first_trans, second_trans = funcPool(
+            transIntoListExecutor,
             [
                 [input_sent.first, first_lang, second_lang, second_dictionary],
                 [input_sent.second, second_lang, first_lang, first_dictionary],
@@ -285,7 +267,9 @@ def addSent(input_sent: InputSent):
 def addSentPool(cmds: list):
     if thread_alow:
         with ThreadPoolExecutor(len(cmds)) as ex:
-            return list(ex.map(addSent, cmds))
+            result = list(ex.map(addSent, cmds))
+            ex.shutdown(wait=False)
+            return result
     return [addSent(cmd) for cmd in cmds]
 
 
