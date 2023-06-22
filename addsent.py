@@ -1,12 +1,9 @@
-import yaml
-from multiprocessing.pool import ThreadPool
+import yaml, string, translators.server, signal, requests
 from deep_translator import GoogleTranslator
-import string
 from translators.server import TranslatorsServer
-import translators.server
-import signal, requests
 from v2enlib import *
 from tabulate import tabulate
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
 
 with open("config.yml", "r") as ymlfile:
@@ -20,7 +17,7 @@ is_auto = True
 first_dictionary_path = f"./cache/{first_lang}.dic"
 second_dictionary_path = f"./cache/{second_lang}.dic"
 main_execute = True
-num_sent = 20
+num_sent = 10
 false_allow = num_sent / 3 * 2
 thread_alow = True
 trans_timeout = 8
@@ -57,6 +54,7 @@ def deepTransGoogle(x: str, source: str, target: str) -> str:
         return ""
 
 
+@measure
 def translatorsTrans(trans, cmd: list, trans_timeout, isDived: bool = False):
     try:
         return func_timeout(
@@ -69,7 +67,7 @@ def translatorsTrans(trans, cmd: list, trans_timeout, isDived: bool = False):
         )
     except translators.server.TranslatorError as e:
         if not isDived:
-            return _extracted_from_translatorsTrans_13(cmd, e, trans, trans_timeout/2)
+            return _extracted_from_translatorsTrans_13(cmd, e, trans, trans_timeout / 2)
         return ""
     except requests.exceptions.JSONDecodeError:
         return ""
@@ -95,22 +93,34 @@ def _extracted_from_translatorsTrans_13(cmd, e, trans, trans_timeout):
             execute = True
         return translatorsTrans(trans, tcmd, trans_timeout, True) if execute else ""
     except IndexError:
-        return ''
+        return ""
+
+
+def translatorsTransExecutor(cmd, *args, **kwargs):
+    return translatorsTrans(*cmd, *args, **kwargs)
+
 
 def translatorsTransPool(cmd: list) -> list:
-    return (
-        ThreadPool(processes=len(translator.translators_dict)).map(
-            lambda cmd: translatorsTrans(*cmd, trans_timeout=trans_timeout),
-            [[trans, cmd] for name, trans in translator.translators_dict.items()],
+    with ThreadPoolExecutor(len(translator.translators_dict)) as ex:
+        return (
+            list(
+                ex.map(
+                    translatorsTransExecutor,
+                    [
+                        [trans, cmd, trans_timeout]
+                        for name, trans in translator.translators_dict.items()
+                    ],
+                )
+            )
+            if thread_alow
+            else [
+                translatorsTrans(trans, cmd, trans_timeout)
+                for name, trans in translator.translators_dict.items()
+            ]
         )
-        if thread_alow
-        else [
-            translatorsTrans(trans, cmd, trans_timeout)
-            for name, trans in translator.translators_dict.items()
-        ]
-    )
 
 
+@measure
 def transIntoList(sent, source_lang, target_lang, target_dictionary):
     ou = checkSpellingPool(
         [
@@ -121,15 +131,21 @@ def transIntoList(sent, source_lang, target_lang, target_dictionary):
     return list(zip(ou, translator.translators_dict.keys()))
 
 
+def transIntoListExecutor(cmd):
+    return transIntoList(*cmd)
+
+
 def transIntoListPool(cmds):
-    return (
-        ThreadPool(processes=len(cmds)).map(lambda cmd: transIntoList(*cmd), cmds)
-        if thread_alow
-        else [transIntoList(*cmd) for cmd in cmds]
-    )
+    with ProcessPoolExecutor(len(cmds)) as ex:
+        return (
+            list(ex.map(transIntoListExecutor, cmds))
+            if thread_alow
+            else [transIntoList(*cmd) for cmd in cmds]
+        )
 
 
 # language utils
+@measure
 def checkSpelling(text: str, dictionary: list, lang: str) -> str:
     word = ""
     try:
@@ -164,16 +180,22 @@ def checkSpelling(text: str, dictionary: list, lang: str) -> str:
     return ""
 
 
+def checkSpellingExecutor(cmd):
+    return checkSpelling(*cmd)
+
+
 def checkSpellingPool(cmds):
-    return (
-        ThreadPool(processes=len(cmds)).map(lambda cmd: checkSpelling(*cmd), cmds)
-        if thread_alow
-        else [checkSpelling(*cmd) for cmd in cmds]
-    )
+    with ThreadPoolExecutor(len(cmds)) as ex:
+        return (
+            list(ex.map(checkSpellingExecutor, cmds))
+            if thread_alow
+            else [checkSpelling(*cmd) for cmd in cmds]
+        )
 
 
+@measure
 def addSent(input_sent: InputSent):
-    time_start = time()
+    time_start = time.time()
     is_agree, first_dump_sent, second_dump_sent, cmds, trans_data = (
         False,
         "",
@@ -243,10 +265,10 @@ def addSent(input_sent: InputSent):
         if is_error:
             first_dump_sent, second_dump_sent = input_sent.first, input_sent.second
 
-    print_data = [
-        ["Data set", input_sent.first, input_sent.second, "N/A"]
-    ] + [[e.isFrom, e.first, e.second, e.accurate] for e in trans_data if e.isAdd]
-    logging.to_both(
+    print_data = [["Data set", input_sent.first, input_sent.second, "N/A"]] + [
+        [e.isFrom, e.first, e.second, e.accurate] for e in trans_data if e.isAdd
+    ]
+    logging.to_console(
         tabulate(
             tabular_data=print_data,
             headers=["From", "Source", "Target", "Accuracy?"],
@@ -255,20 +277,21 @@ def addSent(input_sent: InputSent):
             maxcolwidths=[None, None, 75, 75, 10],
             floatfmt=(".2f" * 5),
         )
-        + f"\n\t({addSent.__name__}) time consume: {(time()-time_start):0,.2f}"
+        + f"\n\t({addSent.__name__}) time consume: {(time.time()-time_start):0,.2f}"
     )
     return first_dump_sent, second_dump_sent, cmds, is_agree
 
 
 def addSentPool(cmds: list):
-    if False:
-        return ThreadPool(processes=len(cmds)).map(addSent, cmds)
+    if thread_alow:
+        with ThreadPoolExecutor(len(cmds)) as ex:
+            return list(ex.map(addSent, cmds))
     return [addSent(cmd) for cmd in cmds]
 
 
 def signalHandler(sig, frame):
     global main_execute
-    logging.to_both("\tStop program!")
+    logging.to_console("\tStop program!")
     main_execute = False
 
 
@@ -283,9 +306,9 @@ if __name__ == "__main__":
 
     first_path, second_path = f"./data/{first_lang}.txt", f"./data/{second_lang}.txt"
     while main_execute:
-        time_start = time()
+        time_start = time.time()
         if isEmpty(first_path) or isEmpty(second_path):
-            logging.to_both("Done!")
+            logging.to_console("Done!")
             exit()
 
         first_dump_sent, second_dump_sent, cmds = [], [], []
@@ -330,4 +353,6 @@ if __name__ == "__main__":
 
         saveDictionary(first_dictionary_path, first_dictionary)
         saveDictionary(second_dictionary_path, second_dictionary)
-        logging.to_both(f"\t\t(mainModule) time consume: {(time()-time_start):0,.2f}")
+        logging.to_console(
+            f"\t\t(mainModule) time consume: {(time.time()-time_start):0,.2f}"
+        )

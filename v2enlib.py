@@ -1,8 +1,6 @@
-import os, string, httpx, langcodes, sqlite3
+import os, string, httpx, langcodes, sqlite3, resource, time
 from difflib import SequenceMatcher
-from addsent import target
 from functools import lru_cache
-from time import time 
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 
 
@@ -20,67 +18,6 @@ class Logging:
     def to_both(self, text: str) -> None:
         self.to_console(text)
         self.to_file(text)
-
-
-logging = Logging(target)
-
-
-# debug def
-def printError(text, error, is_exit=True):
-    logging.to_file(
-        f"{'_'*50}\n\tExpectation while {text}\n\tError type: {type(error)}\n\t{error}\n{chr(8254)*50}"
-    )
-    if is_exit:
-        exit(0)
-
-
-def printInfo(name, pid):
-    logging.to_file(f"Dive into {name} with pid id: {pid}")
-
-
-# sqlite3 defs
-def createSQLtable(connection, table_name):
-    sql_create_table = """CREATE TABLE IF NOT EXISTS {} (
-                            Source LONGTEXT NOT NULL,
-                            Target LONGTEXT NOT NULL,
-                            Verify BOOL NOT NULL
-                        );""".format(
-        table_name
-    )
-    try:
-        connection.cursor().execute(sql_create_table)
-        connection.commit()
-    except Exception as e:
-        printError(createSQLtable.__name__, e)
-
-
-def createOBJ(conn, sql, obj):
-    try:
-        if obj[0] and obj[1]:
-            conn.cursor().execute(sql, obj)
-    except Exception as e:
-        printError(createOBJ.__name__, e)
-
-
-def createOBJPool(cmds, con):
-    [createOBJ(*cmd) for cmd in cmds]
-    con.commit()
-
-
-def getSQLCursor(path) -> sqlite3.Connection:
-    try:
-        sqliteConnection = sqlite3.connect(path)
-        print("Database created and Successfully Connected to SQLite")
-        return sqliteConnection
-    except Exception as e:
-        printError(getSQLCursor.__name__, e, True)
-        exit(0)
-
-
-def getSQL(conn, request):
-    cursor = conn.cursor()
-    cursor.execute(request)
-    return cursor.fetchall()
 
 
 # utils
@@ -149,10 +86,10 @@ def saveDictionary(path, dictionary):
 
 
 def timming(func, *args):
-    time_start = time()
+    time_start = time.time()
     logging.to_console(f"{func.__name__} is timming")
     ou = func(*args)
-    logging.to_console(f"{func.__name__}: {time() - time_start}")
+    logging.to_console(f"{func.__name__}: {time.time() - time_start}")
     return ou
 
 
@@ -164,7 +101,7 @@ def function_timeout(s):
                 future = executor.submit(fn, *args, **kwargs)
                 return future.result(timeout=s)
             except TimeoutError:
-                return kwargs['default_value']
+                return kwargs["default_value"]
             finally:
                 executor.shutdown(wait=False)
 
@@ -177,4 +114,83 @@ def func_timeout(timeout, func, *args, **kargs):
     @function_timeout(timeout)
     def execute(func, *args, **kargs):
         return func(*args, **kargs)
+
     return execute(func, *args, **kargs)
+
+
+def measure(func):
+    def wrapper(*args, **kwargs):
+        start_time = time.monotonic()
+        result = func(*args, **kwargs)
+        end_time = time.monotonic()
+        execution_time = end_time - start_time
+        before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        resource_consumption = before / 1024  # Memory usage in KB
+        logging.to_file(
+            f"{func.__name__}'s result:\n\tExecution time: {execution_time} seconds\n\tMemory consumption: {resource_consumption} KB"
+        )
+        return result
+
+    return wrapper
+
+
+# debug def
+def printError(text, error, is_exit=True):
+    logging.to_file(
+        f"{'_'*50}\n\tExpectation while {text}\n\tError type: {type(error)}\n\t{error}\n{chr(8254)*50}"
+    )
+    if is_exit:
+        exit(0)
+
+
+def printInfo(name, pid):
+    logging.to_file(f"Dive into {name} with pid id: {pid}")
+
+
+# sqlite3 defs
+def createSQLtable(connection, table_name):
+    sql_create_table = """CREATE TABLE IF NOT EXISTS {} (
+                            Source LONGTEXT NOT NULL,
+                            Target LONGTEXT NOT NULL,
+                            Verify BOOL NOT NULL
+                        );""".format(
+        table_name
+    )
+    try:
+        connection.cursor().execute(sql_create_table)
+        connection.commit()
+    except Exception as e:
+        printError(createSQLtable.__name__, e)
+
+
+def createOBJ(conn, sql, obj):
+    try:
+        if obj[0] and obj[1]:
+            conn.cursor().execute(sql, obj)
+    except Exception as e:
+        printError(createOBJ.__name__, e)
+
+
+def createOBJPool(cmds, con):
+    [createOBJ(*cmd) for cmd in cmds]
+    con.commit()
+
+
+def getSQLCursor(path) -> sqlite3.Connection:
+    try:
+        sqliteConnection = sqlite3.connect(path)
+        print("Database created and Successfully Connected to SQLite")
+        return sqliteConnection
+    except Exception as e:
+        printError(getSQLCursor.__name__, e, True)
+        exit(0)
+
+
+def getSQL(conn, request):
+    cursor = conn.cursor()
+    cursor.execute(request)
+    return cursor.fetchall()
+
+
+from addsent import target
+logging = Logging(target)
