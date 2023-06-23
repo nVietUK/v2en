@@ -1,9 +1,10 @@
 import os, string, httpx, langcodes, sqlite3, resource, time
 from difflib import SequenceMatcher
 from functools import lru_cache
-from concurrent.futures import ThreadPoolExecutor, TimeoutError
+from multiprocess.pool import TimeoutError, Pool
 
 
+# classes
 class Logging:
     def __init__(self, target: str) -> None:
         self.file_path = f"./logs/{target}.log"
@@ -73,7 +74,7 @@ def loadDictionary(path):
         with open(path, "r") as f:
             return [word.rstrip("\n") for word in f.read().splitlines(True)]
     except Exception as e:
-        printError(loadDictionary.__name__, e)
+        printError(loadDictionary.__name__, e, logging)
 
 
 def saveDictionary(path, dictionary):
@@ -82,7 +83,7 @@ def saveDictionary(path, dictionary):
             for e in dictionary:
                 f.write(e + "\n")
     except Exception as e:
-        printError(saveDictionary.__name__, e)
+        printError(saveDictionary.__name__, e, logging)
 
 
 def timming(func, *args):
@@ -96,14 +97,15 @@ def timming(func, *args):
 def function_timeout(s):
     def outer(fn):
         def inner(*args, **kwargs):
-            executor = ThreadPoolExecutor()
-            try:
-                future = executor.submit(fn, *args, **kwargs)
-                return future.result(timeout=s)
-            except TimeoutError:
-                return kwargs["default_value"]
-            finally:
-                executor.shutdown(wait=False)
+            with Pool(1) as p:
+                result = p.apply_async(fn, args=args, kwds=kwargs)
+                output = kwargs["default_value"]
+                try:
+                    output = result.get(timeout=s)
+                except TimeoutError:
+                    p.terminate()
+                p.join()
+                return output
 
         return inner
 
@@ -118,24 +120,34 @@ def func_timeout(timeout, func, *args, **kargs):
     return execute(func, *args, **kargs)
 
 
-def measure(func):
-    def wrapper(*args, **kwargs):
-        start_time = time.monotonic()
-        result = func(*args, **kwargs)
-        end_time = time.monotonic()
-        execution_time = end_time - start_time
-        before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        resource_consumption = before / 1024  # Memory usage in KB
-        logging.to_file(
-            f"{func.__name__}'s result:\n\tExecution time: {execution_time} seconds\n\tMemory consumption: {resource_consumption} KB"
-        )
-        return result
+time_allow = 10
+resource_allow = 5
 
-    return wrapper
+
+def measure(logging):
+    def wrap(func):
+        def wrapper(*args, **kwargs):
+            start_time = time.monotonic()
+            result = func(*args, **kwargs)
+            end_time = time.monotonic()
+            execution_time = end_time - start_time
+            before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            resource_consumption = before / 1024 / 1024  # Memory usage in MB
+            if execution_time < time_allow and resource_consumption < resource_allow:
+                return result
+
+            logging.to_file(
+                f"{func.__name__}'s result:\n\tExecution time: {execution_time} seconds\n\tMemory consumption: {resource_consumption} MB"
+            )
+            return result
+
+        return wrapper
+
+    return wrap
 
 
 # debug def
-def printError(text, error, is_exit=True):
+def printError(text, error, logging: Logging, is_exit=True):
     logging.to_file(
         f"{'_'*50}\n\tExpectation while {text}\n\tError type: {type(error)}\n\t{error}\n{chr(8254)*50}"
     )
@@ -143,7 +155,7 @@ def printError(text, error, is_exit=True):
         exit(0)
 
 
-def printInfo(name, pid):
+def printInfo(name, pid, logging: Logging):
     logging.to_file(f"Dive into {name} with pid id: {pid}")
 
 
@@ -160,7 +172,7 @@ def createSQLtable(connection, table_name):
         connection.cursor().execute(sql_create_table)
         connection.commit()
     except Exception as e:
-        printError(createSQLtable.__name__, e)
+        printError(createSQLtable.__name__, e, logging)
 
 
 def createOBJ(conn, sql, obj):
@@ -168,11 +180,13 @@ def createOBJ(conn, sql, obj):
         if obj[0] and obj[1]:
             conn.cursor().execute(sql, obj)
     except Exception as e:
-        printError(createOBJ.__name__, e)
+        printError(createOBJ.__name__, e, logging)
 
 
+@measure
 def createOBJPool(cmds, con):
-    [createOBJ(*cmd) for cmd in cmds]
+    for cmd in cmds:
+        createOBJ(*cmd)
     con.commit()
 
 
@@ -182,7 +196,7 @@ def getSQLCursor(path) -> sqlite3.Connection:
         print("Database created and Successfully Connected to SQLite")
         return sqliteConnection
     except Exception as e:
-        printError(getSQLCursor.__name__, e, True)
+        printError(getSQLCursor.__name__, e, logging, True)
         exit(0)
 
 
@@ -190,7 +204,5 @@ def getSQL(conn, request):
     cursor = conn.cursor()
     cursor.execute(request)
     return cursor.fetchall()
-
-
 from addsent import target
 logging = Logging(target)
