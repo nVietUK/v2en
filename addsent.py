@@ -329,11 +329,10 @@ if __name__ == "__main__":
             for sent in second_dump_sent:
                 f.write(f"{sent}\n")
 
-        if main_execute:
-            with open(first_path, "w") as file:
-                file.writelines(saveIN[num_sent:])
-            with open(second_path, "w") as file:
-                file.writelines(saveOU[num_sent:])
+        with open(first_path, "w") as file:
+            file.writelines(saveIN[num_sent:])
+        with open(second_path, "w") as file:
+            file.writelines(saveOU[num_sent:])
 
         saveDictionary(first_dictionary_path, first_dictionary)
         saveDictionary(second_dictionary_path, second_dictionary)
