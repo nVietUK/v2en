@@ -212,7 +212,7 @@ target = cfg["v2en"]["target"]
 accept_percentage = cfg["v2en"]["accept_percentage"]
 
 #logger init
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s\n%(message)s')
 logger = logging.getLogger('v2en')
 logger.setLevel(logging.WARN)
 file_handler = logging.FileHandler(f'./logs/{target}.log')

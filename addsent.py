@@ -270,7 +270,7 @@ def addSent(input_sent: InputSent):
 
 def signalHandler(sig, frame):
     global main_execute
-    logger.info("\tStop program!")
+    logger.log(101, "\tStop program!")
     main_execute = False
 
 
@@ -292,7 +292,7 @@ if __name__ == "__main__":
     while main_execute:
         time_start = time.time()
         if isEmpty(first_path) or isEmpty(second_path):
-            logger.info("Done!")
+            logger.log(101, "Done!")
             exit()
 
         first_dump_sent, second_dump_sent, cmds = [], [], []
