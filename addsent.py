@@ -16,7 +16,7 @@ is_auto = True
 first_dictionary_path = f"./cache/{first_lang}.dic"
 second_dictionary_path = f"./cache/{second_lang}.dic"
 main_execute = True
-num_sent = 15
+num_sent = 6
 false_allow = 25
 thread_alow = True
 thread_limit = 0
@@ -44,11 +44,14 @@ from v2enlib import (
 
 # thread utils
 def funcPool(func, cmds, isAllowThread=True):
-    if thread_alow and isAllowThread:
-        with ThreadPool(
-            min(len(cmds), thread_limit if thread_limit > 0 else len(cmds))
-        ) as ex:
-            return ex.map(func, cmds)
+    try:
+        if thread_alow and isAllowThread:
+            with ThreadPool(
+                min(len(cmds), thread_limit if thread_limit > 0 else len(cmds))
+            ) as ex:
+                return ex.map(func, cmds)
+    except (Exception, TypeError):
+        pass
     return [func(cmd) for cmd in cmds]
 
 
@@ -77,8 +80,8 @@ def translatorsTrans(trans, cmd: list, trans_timeout, isDived: bool = False):
             return _extracted_from_translatorsTrans_13(cmd, e, trans, trans_timeout / 2)
     except (
         execjs._exceptions.RuntimeUnavailableError,
-        requests.exceptions.JSONDecodeError,
-    ) as e:
+        TypeError
+    ):
         pass
     except Exception as e:
         printError(translatorsTrans.__name__, e, logging, False)
@@ -300,7 +303,8 @@ if __name__ == "__main__":
             ],
         ):
             if e[0] != "" and e[1] != "":
-                first_dump_sent.append(e[0]), second_dump_sent.append(e[1])
+                first_dump_sent.append(e[0])
+                second_dump_sent.append(e[1])
             cmds.extend(i for i in e[2] if i)
             false_count += -false_count if e[3] else 1
             if false_count > false_allow and main_execute:

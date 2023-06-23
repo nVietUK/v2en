@@ -1,13 +1,12 @@
 import os, string, httpx, langcodes, sqlite3, resource, time, yaml
 from difflib import SequenceMatcher
-from functools import lru_cache
 from multiprocess.pool import TimeoutError, Pool
 
 
 # classes
 class Logging:
     def __init__(self, target: str) -> None:
-        self.file = open(f"./logs/{target}.log", 'a')
+        self.file = open(f"./logs/{target}.log", "a")
 
     def to_file(self, text: str) -> None:
         self.file.write(text + "\n")
@@ -61,7 +60,6 @@ def convert(x: str) -> str:
     return x.lower().replace("  ", " ").replace("  ", " ")
 
 
-@lru_cache(maxsize=1024)
 def get_wiktionary_headers(word: str) -> httpx.Response:
     return httpx.get(f"https://en.wiktionary.org/wiki/{word}")
 
@@ -87,14 +85,15 @@ def checkLangFile(*args):
         open(f"./cache/{target}.dic", "w").close()
 
 
-def loadDictionary(path):
+def loadDictionary(path) -> list:
     try:
-        if os.stat(path).st_size == 0:
-            return []
-        with open(path, "r") as f:
-            return [word.rstrip("\n") for word in f.read().splitlines(True)]
+        if os.stat(path).st_size != 0:
+            with open(path, "r") as f:
+                return [word.rstrip("\n") for word in f.read().splitlines(True)]
     except Exception as e:
         printError(loadDictionary.__name__, e, logging)
+    return []
+
 
 
 def saveDictionary(path, dictionary):
@@ -103,7 +102,7 @@ def saveDictionary(path, dictionary):
             for e in dictionary:
                 f.write(e + "\n")
     except Exception as e:
-        printError(saveDictionary.__name__, e, logging)
+        printError("saveDictionary", e, logging)
 
 
 def timming(func, *args):
@@ -229,4 +228,4 @@ with open("config.yml", "r") as ymlfile:
     cfg = yaml.safe_load(ymlfile)
 target = cfg["v2en"]["target"]
 logging = Logging(target)
-accept_percentage = cfg['v2en']['accept_percentage']
+accept_percentage = cfg["v2en"]["accept_percentage"]
