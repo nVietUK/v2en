@@ -1,4 +1,4 @@
-import os, string, httpx, langcodes, sqlite3, resource, time
+import os, string, httpx, langcodes, sqlite3, resource, time, yaml
 from difflib import SequenceMatcher
 from functools import lru_cache
 from multiprocess.pool import TimeoutError, Pool
@@ -19,6 +19,27 @@ class Logging:
     def to_both(self, text: str) -> None:
         self.to_console(text)
         self.to_file(text)
+
+
+class InputSent:
+    def __init__(
+        self,
+        first: str = "",
+        second: str = "",
+        isFrom: str = "",
+        accurate: float = 0,
+    ) -> None:
+        self.isFrom = isFrom or "Data set"
+        self.first = first or "N/A"
+        self.second = second or "N/A"
+        self.accurate = accurate
+        self.isAdd = accurate > accept_percentage
+
+    def isValid(self) -> bool:
+        return bool(self.first and self.second)
+
+    def SQLFormat(self) -> tuple:
+        return (self.first, self.second, 1 if self.isAdd else 0)
 
 
 # utils
@@ -204,5 +225,10 @@ def getSQL(conn, request):
     cursor = conn.cursor()
     cursor.execute(request)
     return cursor.fetchall()
-from addsent import target
+
+
+with open("config.yml", "r") as ymlfile:
+    cfg = yaml.safe_load(ymlfile)
+target = cfg["v2en"]["target"]
 logging = Logging(target)
+accept_percentage = cfg['v2en']['accept_percentage']

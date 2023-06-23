@@ -1,22 +1,6 @@
 import yaml, string, translators.server, signal, execjs._exceptions, requests, time
 from deep_translator import GoogleTranslator
 from translators.server import TranslatorsServer
-from v2enlib import (
-    printError,
-    measure,
-    logging,
-    func_timeout,
-    convert,
-    isExistOnWiki,
-    diffratio,
-    loadDictionary,
-    checkLangFile,
-    getSQLCursor,
-    createSQLtable,
-    isEmpty,
-    saveDictionary,
-    createOBJPool
-)
 from tabulate import tabulate
 from multiprocessing.pool import ThreadPool
 
@@ -27,38 +11,35 @@ target = cfg["v2en"]["target"]
 table_name = cfg["sqlite"]["table_name"]
 first_lang = target[:2]
 second_lang = target[-2:]
-accept_percentage = 0.65
+accept_percentage = cfg['v2en']['accept_percentage']
 is_auto = True
 first_dictionary_path = f"./cache/{first_lang}.dic"
 second_dictionary_path = f"./cache/{second_lang}.dic"
 main_execute = True
-num_sent = 20
+num_sent = 3
 false_allow = 25
 thread_alow = True
 thread_limit = 0
 trans_timeout = 8
 translator = TranslatorsServer()
 
-
-class InputSent:
-    def __init__(
-        self,
-        first: str = "",
-        second: str = "",
-        isFrom: str = "",
-        accurate: float = 0,
-    ) -> None:
-        self.isFrom = isFrom or "Data set"
-        self.first = first or "N/A"
-        self.second = second or "N/A"
-        self.accurate = accurate
-        self.isAdd = accurate > accept_percentage
-
-    def isValid(self) -> bool:
-        return bool(self.first and self.second)
-
-    def SQLFormat(self) -> tuple:
-        return (self.first, self.second, 1 if self.isAdd else 0)
+from v2enlib import (
+    printError,
+    measure,
+    func_timeout,
+    convert,
+    isExistOnWiki,
+    diffratio,
+    loadDictionary,
+    checkLangFile,
+    getSQLCursor,
+    createSQLtable,
+    isEmpty,
+    saveDictionary,
+    createOBJPool,
+    InputSent,
+    logging
+)
 
 
 # thread utils
@@ -189,7 +170,7 @@ def checkSpellingExecutor(cmd):
     return checkSpelling(*cmd)
 
 
-@measure
+@measure(logging)
 def addSent(input_sent: InputSent):
     time_start = time.time()
     is_agree, first_dump_sent, second_dump_sent, cmds, trans_data = (
