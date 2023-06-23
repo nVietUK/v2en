@@ -181,7 +181,7 @@ def createSQLtable(connection, table_name):
         printError(createSQLtable.__name__, e)
 
 
-def createOBJ(conn, sql, obj):
+def createOBJ(sql, obj, conn):
     try:
         if obj[0] and obj[1]:
             conn.cursor().execute(sql, obj)
@@ -189,9 +189,9 @@ def createOBJ(conn, sql, obj):
         printError(createOBJ.__name__, e)
 
 
-def createOBJPool(cmds):
+def createOBJPool(cmds, conn):
     for cmd in cmds:
-        createOBJ(*cmd)
+        createOBJ(*cmd, conn=conn)
 
 
 def getSQLCursor(path) -> sqlite3.Connection:

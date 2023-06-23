@@ -1,9 +1,9 @@
-import contextlib, deep_translator.exceptions, langcodes
+import deep_translator.exceptions, langcodes, gc
 import yaml, string, translators.server, signal, execjs._exceptions, deep_translator, time
 from translators.server import TranslatorsServer
 from tabulate import tabulate
-from multiprocessing.pool import ThreadPool
-from alive_progress import alive_bar
+from multiprocessing.pool import Pool, ThreadPool
+from tqdm import tqdm
 
 with open("config.yml", "r") as ymlfile:
     cfg = yaml.safe_load(ymlfile)
@@ -16,8 +16,8 @@ is_auto = True
 first_dictionary_path = f"./cache/{first_lang}.dic"
 second_dictionary_path = f"./cache/{second_lang}.dic"
 main_execute = True
-num_sent = 6
-false_allow = 25
+num_sent = 10
+false_allow = num_sent / 2 * 3
 thread_alow = True
 thread_limit = 0
 trans_timeout = 8
@@ -25,7 +25,6 @@ translator = TranslatorsServer()
 
 from v2enlib import (
     printError,
-    measure,
     func_timeout,
     convert,
     isExistOnWiki,
@@ -36,6 +35,7 @@ from v2enlib import (
     createSQLtable,
     isEmpty,
     saveDictionary,
+    measure,
     createOBJPool,
     terminalWidth,
     InputSent,
@@ -44,14 +44,15 @@ from v2enlib import (
 
 
 # thread utils
-def funcPool(func, cmds, isAllowThread=True):
-    with contextlib.suppress(Exception, ValueError):
+def funcPool(func, cmds, executor, isAllowThread=True):
+    try:
         if thread_alow and isAllowThread:
-            with ThreadPool(
+            with executor(
                 min(len(cmds), thread_limit if thread_limit > 0 else len(cmds)),
-                
             ) as ex:
-                return ex.map(func, cmds)
+                return list(tqdm(ex.map(func, cmds), total=len(cmds)))
+    except Exception as e:
+        printError("funcPool", e, False)
     return [func(cmd) for cmd in cmds]
 
 
@@ -115,6 +116,7 @@ def translatorsTransExecutor(cmd, *args, **kwargs):
     return translatorsTrans(*cmd, *args, **kwargs)
 
 
+@measure
 def transIntoList(sent, source_lang, target_lang, target_dictionary):
     ou = funcPool(
         checkSpellingExecutor,
@@ -126,13 +128,14 @@ def transIntoList(sent, source_lang, target_lang, target_dictionary):
                     [trans, [sent, source_lang, target_lang], trans_timeout]
                     for name, trans in translator.translators_dict.items()
                 ],
+                ThreadPool,
             )
         ],
+        ThreadPool,
     )
     return list(zip(ou, translator.translators_dict.keys()))
 
 
-@measure
 def transIntoListExecutor(cmd):
     return transIntoList(*cmd)
 
@@ -196,6 +199,7 @@ def addSent(input_sent: InputSent):
                 second_lang,
             ],
         ],
+        ThreadPool,
     )
     if input_sent.isValid():
         is_error = True
@@ -205,6 +209,7 @@ def addSent(input_sent: InputSent):
                 [input_sent.first, first_lang, second_lang, second_dictionary],
                 [input_sent.second, second_lang, first_lang, first_dictionary],
             ],
+            ThreadPool,
         )
         trans_data = [
             InputSent(
@@ -236,13 +241,11 @@ def addSent(input_sent: InputSent):
             """
             cmds = [
                 [
-                    sql_connection,
                     table_command.format(table_name),
                     (input_sent.first, input_sent.second, 1),
                 ]
             ] + [
                 [
-                    sql_connection,
                     table_command.format(table_name),
                     e.SQLFormat(),
                 ]
@@ -267,6 +270,7 @@ def addSent(input_sent: InputSent):
                 floatfmt=(".2f" * 5),
             ),
         )
+    del trans_data
     print(f"\t({addSent.__name__}) time consume: {(time.time()-time_start):0,.2f}")
     return first_dump_sent, second_dump_sent, cmds, is_agree
 
@@ -275,6 +279,10 @@ def signalHandler(sig, frame):
     global main_execute
     logger.log(101, "\tStop program!")
     main_execute = False
+
+
+def addSentExecutor(cmd):
+    return addSent(cmd)
 
 
 if __name__ == "__main__":
@@ -301,11 +309,12 @@ if __name__ == "__main__":
         first_dump_sent, second_dump_sent, cmds = [], [], []
 
         for e in funcPool(
-            addSent,
+            addSentExecutor,
             [
                 InputSent(saveIN[idx], saveOU[idx])
                 for idx in range(num_sent if len(saveIN) > num_sent else len(saveIN))
             ],
+            Pool,
         ):
             if e[0] != "" and e[1] != "":
                 first_dump_sent.append(e[0])
@@ -319,10 +328,10 @@ if __name__ == "__main__":
                     False,
                 )
         subtime = time.time()
-        createOBJPool(cmds)
+        createOBJPool(cmds, sql_connection)
 
-        first_dump_sents+=first_dump_sent
-        second_dump_sents+=second_dump_sent
+        first_dump_sents += first_dump_sent
+        second_dump_sents += second_dump_sent
 
         saveOU = saveOU[num_sent:]
         saveIN = saveIN[num_sent:]
@@ -333,6 +342,8 @@ if __name__ == "__main__":
             101,
             f"\t\t(mainModule) time consume: {(time.time()-time_start):0,.2f}\n\t\t{time.time()-subtime}",
         )
+        del cmds, first_dump_sent, second_dump_sent
+        gc.collect()
     sql_connection.commit()
     with open(first_path, "w") as file:
         file.writelines(saveIN)
