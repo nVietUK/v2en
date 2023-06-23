@@ -16,7 +16,7 @@ is_auto = True
 first_dictionary_path = f"./cache/{first_lang}.dic"
 second_dictionary_path = f"./cache/{second_lang}.dic"
 main_execute = True
-num_sent = 3
+num_sent = 15
 false_allow = 25
 thread_alow = True
 thread_limit = 0
@@ -247,7 +247,7 @@ def addSent(input_sent: InputSent):
             first_dump_sent, second_dump_sent = input_sent.first, input_sent.second
 
         print_data = [["Data set", input_sent.first, input_sent.second, "N/A"]] + [
-            [e.isFrom, e.first, e.second, e.accurate] for e in trans_data
+            [e.isFrom, e.first, e.second, e.accurate] for e in trans_data if e.isAdd
         ]
         logging.to_console(
             tabulate(

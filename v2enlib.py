@@ -7,11 +7,10 @@ from multiprocess.pool import TimeoutError, Pool
 # classes
 class Logging:
     def __init__(self, target: str) -> None:
-        self.file_path = f"./logs/{target}.log"
+        self.file = open(f"./logs/{target}.log", 'a')
 
     def to_file(self, text: str) -> None:
-        with open(self.file_path, "a") as logfile:
-            logfile.write(text + "\n")
+        self.file.write(text + "\n")
 
     def to_console(self, text: str) -> None:
         print(text)
@@ -204,7 +203,6 @@ def createOBJ(conn, sql, obj):
         printError(createOBJ.__name__, e, logging)
 
 
-@measure
 def createOBJPool(cmds, con):
     for cmd in cmds:
         createOBJ(*cmd)
