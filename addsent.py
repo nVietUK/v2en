@@ -3,7 +3,7 @@ import yaml, string, translators.server, signal, execjs._exceptions, deep_transl
 from translators.server import TranslatorsServer
 from tabulate import tabulate
 from multiprocessing.pool import ThreadPool
-
+from alive_progress import alive_bar
 
 with open("config.yml", "r") as ymlfile:
     cfg = yaml.safe_load(ymlfile)
@@ -37,6 +37,7 @@ from v2enlib import (
     isEmpty,
     saveDictionary,
     createOBJPool,
+    terminalWidth,
     InputSent,
     logger,
 )
@@ -47,7 +48,8 @@ def funcPool(func, cmds, isAllowThread=True):
     with contextlib.suppress(Exception, ValueError):
         if thread_alow and isAllowThread:
             with ThreadPool(
-                min(len(cmds), thread_limit if thread_limit > 0 else len(cmds))
+                min(len(cmds), thread_limit if thread_limit > 0 else len(cmds)),
+                
             ) as ex:
                 return ex.map(func, cmds)
     return [func(cmd) for cmd in cmds]
@@ -253,6 +255,7 @@ def addSent(input_sent: InputSent):
         print_data = [["Data set", input_sent.first, input_sent.second, "N/A"]] + [
             [e.isFrom, e.first, e.second, e.accurate] for e in trans_data if e.isAdd
         ]
+        width = int(terminalWidth() / 4)
         logger.log(
             101,
             tabulate(
@@ -260,7 +263,7 @@ def addSent(input_sent: InputSent):
                 headers=["From", "Source", "Target", "Accuracy?"],
                 tablefmt="fancy_grid",
                 showindex="always",
-                maxcolwidths=[None, None, 75, 75, 10],
+                maxcolwidths=[None, None, width, width, 7],
                 floatfmt=(".2f" * 5),
             ),
         )
@@ -281,7 +284,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signalHandler)
     sql_connection = getSQLCursor(cfg["sqlite"]["path"])
     createSQLtable(sql_connection, table_name)
-    false_count = 0
+    false_count, first_dump_sents, second_dump_sents = 0, [], []
 
     first_path, second_path = f"./data/{first_lang}.txt", f"./data/{second_lang}.txt"
     with open(first_path, "r") as first_file:
@@ -318,12 +321,8 @@ if __name__ == "__main__":
         subtime = time.time()
         createOBJPool(cmds)
 
-        with open(f"./data/{first_lang}.dump", "a") as f:
-            for sent in first_dump_sent:
-                f.write(f"{sent}\n")
-        with open(f"./data/{second_lang}.dump", "a") as f:
-            for sent in second_dump_sent:
-                f.write(f"{sent}\n")
+        first_dump_sents+=first_dump_sent
+        second_dump_sents+=second_dump_sent
 
         saveOU = saveOU[num_sent:]
         saveIN = saveIN[num_sent:]
@@ -339,3 +338,9 @@ if __name__ == "__main__":
         file.writelines(saveIN)
     with open(second_path, "w") as file:
         file.writelines(saveOU)
+    with open(f"./data/{first_lang}.dump", "a") as f:
+        for sent in first_dump_sents:
+            f.write(f"{sent}\n")
+    with open(f"./data/{second_lang}.dump", "a") as f:
+        for sent in second_dump_sents:
+            f.write(f"{sent}\n")

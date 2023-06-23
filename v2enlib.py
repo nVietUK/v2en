@@ -146,10 +146,14 @@ def measure(func):
     return wrapper
 
 
+def terminalWidth():
+    return os.get_terminal_size().columns
 
 
 # debug def
 def printError(text, error, is_exit=True):
+    if error == OSError:
+        return
     logger.fatal(
         f"{'_'*50}\n\tExpectation while {text}\n\tError type: {type(error)}\n\t{error}\n{chr(8254)*50}"
     )
@@ -211,11 +215,11 @@ with open("config.yml", "r") as ymlfile:
 target = cfg["v2en"]["target"]
 accept_percentage = cfg["v2en"]["accept_percentage"]
 
-#logger init
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s\n%(message)s')
-logger = logging.getLogger('v2en')
+# logger init
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s\n%(message)s")
+logger = logging.getLogger("v2en")
 logger.setLevel(logging.WARN)
-file_handler = logging.FileHandler(f'./logs/{target}.log')
+file_handler = logging.FileHandler(f"./logs/{target}.log")
 file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(formatter)
 
