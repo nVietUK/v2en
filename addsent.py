@@ -1,5 +1,5 @@
-import yaml, string, translators.server, signal, execjs._exceptions, requests, time
-from deep_translator import GoogleTranslator
+import contextlib, deep_translator.exceptions, langcodes
+import yaml, string, translators.server, signal, execjs._exceptions, deep_translator, time
 from translators.server import TranslatorsServer
 from tabulate import tabulate
 from multiprocessing.pool import ThreadPool
@@ -11,7 +11,7 @@ target = cfg["v2en"]["target"]
 table_name = cfg["sqlite"]["table_name"]
 first_lang = target[:2]
 second_lang = target[-2:]
-accept_percentage = cfg['v2en']['accept_percentage']
+accept_percentage = cfg["v2en"]["accept_percentage"]
 is_auto = True
 first_dictionary_path = f"./cache/{first_lang}.dic"
 second_dictionary_path = f"./cache/{second_lang}.dic"
@@ -38,33 +38,37 @@ from v2enlib import (
     saveDictionary,
     createOBJPool,
     InputSent,
-    logging
+    logger,
 )
 
 
 # thread utils
 def funcPool(func, cmds, isAllowThread=True):
-    try:
+    with contextlib.suppress(Exception, ValueError):
         if thread_alow and isAllowThread:
             with ThreadPool(
                 min(len(cmds), thread_limit if thread_limit > 0 else len(cmds))
             ) as ex:
                 return ex.map(func, cmds)
-    except (Exception, TypeError):
-        pass
     return [func(cmd) for cmd in cmds]
 
 
 # translate def
 def deepTransGoogle(x: str, source: str, target: str) -> str:
     try:
-        return GoogleTranslator(source=source, target=target).translate(x)
+        return deep_translator.GoogleTranslator(source=source, target=target).translate(
+            x
+        )
+    except deep_translator.exceptions.LanguageNotSupportedException:
+        return deepTransGoogle(
+            x, str(langcodes.Language.get(source)), str(langcodes.Language.get(target))
+        )
     except Exception as e:
-        printError(deepTransGoogle.__name__, e, logging, False)
+        printError(deepTransGoogle.__name__, e, False)
         return ""
 
 
-@measure(logging)
+@measure
 def translatorsTrans(trans, cmd: list, trans_timeout, isDived: bool = False):
     try:
         return func_timeout(
@@ -78,13 +82,10 @@ def translatorsTrans(trans, cmd: list, trans_timeout, isDived: bool = False):
     except translators.server.TranslatorError as e:
         if not isDived:
             return _extracted_from_translatorsTrans_13(cmd, e, trans, trans_timeout / 2)
-    except (
-        execjs._exceptions.RuntimeUnavailableError,
-        TypeError
-    ):
+    except (execjs._exceptions.RuntimeUnavailableError, TypeError, ValueError):
         pass
     except Exception as e:
-        printError(translatorsTrans.__name__, e, logging, False)
+        printError(translatorsTrans.__name__, e, False)
     return deepTransGoogle(*cmd)
 
 
@@ -129,6 +130,7 @@ def transIntoList(sent, source_lang, target_lang, target_dictionary):
     return list(zip(ou, translator.translators_dict.keys()))
 
 
+@measure
 def transIntoListExecutor(cmd):
     return transIntoList(*cmd)
 
@@ -161,11 +163,10 @@ def checkSpelling(text: str, dictionary: list, lang: str) -> str:
         printError(
             f"add word for {lang}",
             Exception(f"{word} isn't existed on Wikitionary!"),
-            logging,
             False,
         )
     except Exception as e:
-        printError(checkSpelling.__name__, e, logging)
+        printError(checkSpelling.__name__, e)
     return ""
 
 
@@ -173,7 +174,7 @@ def checkSpellingExecutor(cmd):
     return checkSpelling(*cmd)
 
 
-@measure(logging)
+@measure
 def addSent(input_sent: InputSent):
     time_start = time.time()
     is_agree, first_dump_sent, second_dump_sent, cmds, trans_data = (
@@ -252,7 +253,8 @@ def addSent(input_sent: InputSent):
         print_data = [["Data set", input_sent.first, input_sent.second, "N/A"]] + [
             [e.isFrom, e.first, e.second, e.accurate] for e in trans_data if e.isAdd
         ]
-        logging.to_console(
+        logger.log(
+            101,
             tabulate(
                 tabular_data=print_data,
                 headers=["From", "Source", "Target", "Accuracy?"],
@@ -260,7 +262,7 @@ def addSent(input_sent: InputSent):
                 showindex="always",
                 maxcolwidths=[None, None, 75, 75, 10],
                 floatfmt=(".2f" * 5),
-            )
+            ),
         )
     print(f"\t({addSent.__name__}) time consume: {(time.time()-time_start):0,.2f}")
     return first_dump_sent, second_dump_sent, cmds, is_agree
@@ -268,7 +270,7 @@ def addSent(input_sent: InputSent):
 
 def signalHandler(sig, frame):
     global main_execute
-    logging.to_console("\tStop program!")
+    logger.info("\tStop program!")
     main_execute = False
 
 
@@ -290,7 +292,7 @@ if __name__ == "__main__":
     while main_execute:
         time_start = time.time()
         if isEmpty(first_path) or isEmpty(second_path):
-            logging.to_console("Done!")
+            logger.info("Done!")
             exit()
 
         first_dump_sent, second_dump_sent, cmds = [], [], []
@@ -311,11 +313,10 @@ if __name__ == "__main__":
                 printError(
                     "mainModule",
                     Exception("Too many fatal translation!"),
-                    logging,
                     False,
                 )
         subtime = time.time()
-        createOBJPool(cmds, sql_connection)
+        createOBJPool(cmds)
 
         with open(f"./data/{first_lang}.dump", "a") as f:
             for sent in first_dump_sent:
@@ -329,9 +330,11 @@ if __name__ == "__main__":
 
         saveDictionary(first_dictionary_path, first_dictionary)
         saveDictionary(second_dictionary_path, second_dictionary)
-        logging.to_console(
-            f"\t\t(mainModule) time consume: {(time.time()-time_start):0,.2f}\n\t\t{time.time()-subtime}"
+        logger.log(
+            101,
+            f"\t\t(mainModule) time consume: {(time.time()-time_start):0,.2f}\n\t\t{time.time()-subtime}",
         )
+    sql_connection.commit()
     with open(first_path, "w") as file:
         file.writelines(saveIN)
     with open(second_path, "w") as file:

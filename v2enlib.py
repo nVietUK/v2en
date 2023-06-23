@@ -1,24 +1,9 @@
-import os, string, httpx, langcodes, sqlite3, resource, time, yaml
+import os, string, httpx, langcodes, sqlite3, resource, time, yaml, logging
 from difflib import SequenceMatcher
 from multiprocess.pool import TimeoutError, Pool
 
 
 # classes
-class Logging:
-    def __init__(self, target: str) -> None:
-        self.file = open(f"./logs/{target}.log", "a")
-
-    def to_file(self, text: str) -> None:
-        self.file.write(text + "\n")
-
-    def to_console(self, text: str) -> None:
-        print(text)
-
-    def to_both(self, text: str) -> None:
-        self.to_console(text)
-        self.to_file(text)
-
-
 class InputSent:
     def __init__(
         self,
@@ -91,9 +76,8 @@ def loadDictionary(path) -> list:
             with open(path, "r") as f:
                 return [word.rstrip("\n") for word in f.read().splitlines(True)]
     except Exception as e:
-        printError(loadDictionary.__name__, e, logging)
+        printError(loadDictionary.__name__, e)
     return []
-
 
 
 def saveDictionary(path, dictionary):
@@ -102,14 +86,14 @@ def saveDictionary(path, dictionary):
             for e in dictionary:
                 f.write(e + "\n")
     except Exception as e:
-        printError("saveDictionary", e, logging)
+        printError("saveDictionary", e)
 
 
 def timming(func, *args):
     time_start = time.time()
-    logging.to_console(f"{func.__name__} is timming")
+    logging.info(f"{func.__name__} is timming")
     ou = func(*args)
-    logging.to_console(f"{func.__name__}: {time.time() - time_start}")
+    logging.info(0, f"{func.__name__}: {time.time() - time_start}")
     return ou
 
 
@@ -139,43 +123,42 @@ def func_timeout(timeout, func, *args, **kargs):
     return execute(func, *args, **kargs)
 
 
-time_allow = 10
-resource_allow = 5
+time_allow = 8
+resource_allow = 1
 
 
-def measure(logging):
-    def wrap(func):
-        def wrapper(*args, **kwargs):
-            start_time = time.monotonic()
-            result = func(*args, **kwargs)
-            end_time = time.monotonic()
-            execution_time = end_time - start_time
-            before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-            resource_consumption = before / 1024 / 1024  # Memory usage in MB
-            if execution_time < time_allow and resource_consumption < resource_allow:
-                return result
-
-            logging.to_file(
-                f"{func.__name__}'s result:\n\tExecution time: {execution_time} seconds\n\tMemory consumption: {resource_consumption} MB"
-            )
+def measure(func):
+    def wrapper(*args, **kwargs):
+        start_time = time.monotonic()
+        result = func(*args, **kwargs)
+        end_time = time.monotonic()
+        execution_time = end_time - start_time
+        before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        resource_consumption = before / 1024 / 1024  # Memory usage in MB
+        if execution_time < time_allow and resource_consumption < resource_allow:
             return result
 
-        return wrapper
+        logger.debug(
+            f"{func.__name__}'s result:\n\tExecution time: {execution_time} seconds\n\tMemory consumption: {resource_consumption} MB"
+        )
+        return result
 
-    return wrap
+    return wrapper
+
+
 
 
 # debug def
-def printError(text, error, logging: Logging, is_exit=True):
-    logging.to_file(
+def printError(text, error, is_exit=True):
+    logger.fatal(
         f"{'_'*50}\n\tExpectation while {text}\n\tError type: {type(error)}\n\t{error}\n{chr(8254)*50}"
     )
     if is_exit:
         exit(0)
 
 
-def printInfo(name, pid, logging: Logging):
-    logging.to_file(f"Dive into {name} with pid id: {pid}")
+def printInfo(name, pid):
+    logger.info(f"Dive into {name} with pid id: {pid}")
 
 
 # sqlite3 defs
@@ -191,7 +174,7 @@ def createSQLtable(connection, table_name):
         connection.cursor().execute(sql_create_table)
         connection.commit()
     except Exception as e:
-        printError(createSQLtable.__name__, e, logging)
+        printError(createSQLtable.__name__, e)
 
 
 def createOBJ(conn, sql, obj):
@@ -199,13 +182,12 @@ def createOBJ(conn, sql, obj):
         if obj[0] and obj[1]:
             conn.cursor().execute(sql, obj)
     except Exception as e:
-        printError(createOBJ.__name__, e, logging)
+        printError(createOBJ.__name__, e)
 
 
-def createOBJPool(cmds, con):
+def createOBJPool(cmds):
     for cmd in cmds:
         createOBJ(*cmd)
-    con.commit()
 
 
 def getSQLCursor(path) -> sqlite3.Connection:
@@ -214,7 +196,7 @@ def getSQLCursor(path) -> sqlite3.Connection:
         print("Database created and Successfully Connected to SQLite")
         return sqliteConnection
     except Exception as e:
-        printError(getSQLCursor.__name__, e, logging, True)
+        printError(getSQLCursor.__name__, e, True)
         exit(0)
 
 
@@ -227,5 +209,18 @@ def getSQL(conn, request):
 with open("config.yml", "r") as ymlfile:
     cfg = yaml.safe_load(ymlfile)
 target = cfg["v2en"]["target"]
-logging = Logging(target)
 accept_percentage = cfg["v2en"]["accept_percentage"]
+
+#logger init
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger('v2en')
+logger.setLevel(logging.WARN)
+file_handler = logging.FileHandler(f'./logs/{target}.log')
+file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(formatter)
+
+console_handler = logging.StreamHandler()
+console_handler.setLevel(101)
+console_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
