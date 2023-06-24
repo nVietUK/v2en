@@ -123,10 +123,6 @@ def func_timeout(timeout, func, *args, **kargs):
     return execute(func, *args, **kargs)
 
 
-time_allow = 8
-resource_allow = 1
-
-
 def measure(func):
     def wrapper(*args, **kwargs):
         start_time = time.monotonic()
@@ -138,7 +134,7 @@ def measure(func):
         if execution_time < time_allow and resource_consumption < resource_allow:
             return result
 
-        logger.debug(
+        logger.warn(
             f"{func.__name__}'s result:\n\tExecution time: {execution_time} seconds\n\tMemory consumption: {resource_consumption} MB"
         )
         return result
@@ -214,6 +210,8 @@ with open("config.yml", "r") as ymlfile:
     cfg = yaml.safe_load(ymlfile)
 target = cfg["v2en"]["target"]
 accept_percentage = cfg["v2en"]["accept_percentage"]
+time_allow = cfg['v2en']['time_allow']
+resource_allow = cfg['v2en']['resource_allow']
 
 # logger init
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s\n%(message)s")

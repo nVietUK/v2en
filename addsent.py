@@ -3,24 +3,23 @@ import yaml, string, translators.server, signal, execjs._exceptions, deep_transl
 from translators.server import TranslatorsServer
 from tabulate import tabulate
 from multiprocessing.pool import Pool, ThreadPool
-from tqdm import tqdm
+from alive_progress import alive_bar
 
 with open("config.yml", "r") as ymlfile:
     cfg = yaml.safe_load(ymlfile)
 target = cfg["v2en"]["target"]
+num_sent = cfg['v2en']['num_sent']
 table_name = cfg["sqlite"]["table_name"]
+accept_percentage = cfg["v2en"]["accept_percentage"]
+thread_alow = cfg['v2en']['thread']['allow']
+thread_limit = cfg['v2en']['thread']['limit']
+trans_timeout = cfg['v2en']['trans_timeout']
 first_lang = target[:2]
 second_lang = target[-2:]
-accept_percentage = cfg["v2en"]["accept_percentage"]
-is_auto = True
 first_dictionary_path = f"./cache/{first_lang}.dic"
 second_dictionary_path = f"./cache/{second_lang}.dic"
 main_execute = True
-num_sent = 10
 false_allow = num_sent / 2 * 3
-thread_alow = True
-thread_limit = 0
-trans_timeout = 8
 translator = TranslatorsServer()
 
 from v2enlib import (
@@ -46,14 +45,20 @@ from v2enlib import (
 # thread utils
 def funcPool(func, cmds, executor, isAllowThread=True):
     try:
-        if thread_alow and isAllowThread:
-            with executor(
-                min(len(cmds), thread_limit if thread_limit > 0 else len(cmds)),
-            ) as ex:
-                return list(tqdm(ex.map(func, cmds), total=len(cmds)))
+        with executor(min(len(cmds), thread_limit if thread_limit > 0 else len(cmds)),) as ex:
+            with alive_bar(len(cmds)) as bar:
+                if thread_alow and isAllowThread:
+                    results = []
+                    futures = [ex.submit(func, cmd) from cmd in cmds]
+                    for future in futures:
+                        result = future.result()
+                        results.append(result)
+                        bar()
+                    return results
+        return [func(cmd) for cmd in cmds]
     except Exception as e:
         printError("funcPool", e, False)
-    return [func(cmd) for cmd in cmds]
+    return []
 
 
 # translate def
@@ -181,7 +186,6 @@ def checkSpellingExecutor(cmd):
 
 @measure
 def addSent(input_sent: InputSent):
-    time_start = time.time()
     is_agree, first_dump_sent, second_dump_sent, cmds, trans_data = (
         False,
         "",
@@ -271,7 +275,7 @@ def addSent(input_sent: InputSent):
             ),
         )
     del trans_data
-    print(f"\t({addSent.__name__}) time consume: {(time.time()-time_start):0,.2f}")
+    gc.collect()
     return first_dump_sent, second_dump_sent, cmds, is_agree
 
 
