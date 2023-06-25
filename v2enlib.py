@@ -1,4 +1,4 @@
-import os, string, httpx, langcodes, sqlite3, resource, time, yaml, logging
+import os, string, httpx, langcodes, sqlite3, resource, time, yaml, logging, librosa
 from difflib import SequenceMatcher
 from multiprocess.pool import TimeoutError, Pool
 
@@ -61,6 +61,21 @@ def isExistOnWiki(word: str, lang: str) -> bool:
 
 def cleanScreen() -> None:
     os.system("cls" if os.name == "nt" else "clear")
+
+
+def playFreq(freq, duration):
+    if os.name == "nt":
+        import winsound
+
+        winsound.Beep(freq, duration)
+    else:
+        os.system(f"play -qn synth {duration/1000} sine {freq} >/dev/null 2>&1")
+
+
+def playSound(melody: list, duration: list):
+    melody = librosa.note_to_hz(melody)
+    for note, dur in zip(melody, duration):
+        playFreq(note, dur)
 
 
 def checkLangFile(*args):

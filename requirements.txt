@@ -5,3 +5,5 @@ langcodes
 tensorflow-model-optimization
 language-data
 tabulate
+httpx
+librosa
