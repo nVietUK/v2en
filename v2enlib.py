@@ -89,14 +89,6 @@ def saveDictionary(path, dictionary):
         printError("saveDictionary", e)
 
 
-def timming(func, *args):
-    time_start = time.time()
-    logging.info(f"{func.__name__} is timming")
-    ou = func(*args)
-    logging.info(0, f"{func.__name__}: {time.time() - time_start}")
-    return ou
-
-
 def function_timeout(s):
     def outer(fn):
         def inner(*args, **kwargs):
@@ -210,8 +202,8 @@ with open("config.yml", "r") as ymlfile:
     cfg = yaml.safe_load(ymlfile)
 target = cfg["v2en"]["target"]
 accept_percentage = cfg["v2en"]["accept_percentage"]
-time_allow = cfg['v2en']['time_allow']
-resource_allow = cfg['v2en']['resource_allow']
+time_allow = cfg["v2en"]["time_allow"]
+resource_allow = cfg["v2en"]["resource_allow"]
 
 # logger init
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s\n%(message)s")

@@ -3,17 +3,17 @@ import yaml, string, translators.server, signal, execjs._exceptions, deep_transl
 from translators.server import TranslatorsServer
 from tabulate import tabulate
 from multiprocessing.pool import Pool, ThreadPool
-from alive_progress import alive_bar
+from tqdm import tqdm
 
 with open("config.yml", "r") as ymlfile:
     cfg = yaml.safe_load(ymlfile)
 target = cfg["v2en"]["target"]
-num_sent = cfg['v2en']['num_sent']
+num_sent = cfg["v2en"]["num_sent"]
 table_name = cfg["sqlite"]["table_name"]
 accept_percentage = cfg["v2en"]["accept_percentage"]
-thread_alow = cfg['v2en']['thread']['allow']
-thread_limit = cfg['v2en']['thread']['limit']
-trans_timeout = cfg['v2en']['trans_timeout']
+thread_alow = cfg["v2en"]["thread"]["allow"]
+thread_limit = cfg["v2en"]["thread"]["limit"]
+trans_timeout = cfg["v2en"]["trans_timeout"]
 first_lang = target[:2]
 second_lang = target[-2:]
 first_dictionary_path = f"./cache/{first_lang}.dic"
@@ -45,17 +45,17 @@ from v2enlib import (
 # thread utils
 def funcPool(func, cmds, executor, isAllowThread=True):
     try:
-        with executor(min(len(cmds), thread_limit if thread_limit > 0 else len(cmds)),) as ex:
-            with alive_bar(len(cmds)) as bar:
-                if thread_alow and isAllowThread:
-                    results = []
-                    futures = [ex.submit(func, cmd) from cmd in cmds]
-                    for future in futures:
-                        result = future.result()
-                        results.append(result)
-                        bar()
-                    return results
-        return [func(cmd) for cmd in cmds]
+        with executor(
+            min(len(cmds), thread_limit if thread_limit > 0 else len(cmds)),
+        ) as ex:
+            if not thread_alow or not isAllowThread:
+                return [func(cmd) for cmd in tqdm(cmds, leave=False)]
+            with tqdm(total=len(cmds), leave=False) as pbar:
+                results = []
+                for res in ex.imap_unordered(func, cmds):
+                    pbar.update(1)
+                    results.append(res)
+                return results
     except Exception as e:
         printError("funcPool", e, False)
     return []
@@ -281,8 +281,9 @@ def addSent(input_sent: InputSent):
 
 def signalHandler(sig, frame):
     global main_execute
-    logger.log(101, "\tStop program!")
-    main_execute = False
+    if main_execute:
+        logger.log(101, "\tStop program!")
+        main_execute = False
 
 
 def addSentExecutor(cmd):
@@ -331,20 +332,20 @@ if __name__ == "__main__":
                     Exception("Too many fatal translation!"),
                     False,
                 )
-        subtime = time.time()
+                main_execute = False
         createOBJPool(cmds, sql_connection)
 
-        first_dump_sents += first_dump_sent
-        second_dump_sents += second_dump_sent
-
-        saveOU = saveOU[num_sent:]
-        saveIN = saveIN[num_sent:]
+        if main_execute:
+            second_dump_sents += second_dump_sent
+            first_dump_sents += first_dump_sent
+            saveOU = saveOU[num_sent:]
+            saveIN = saveIN[num_sent:]
 
         saveDictionary(first_dictionary_path, first_dictionary)
         saveDictionary(second_dictionary_path, second_dictionary)
         logger.log(
             101,
-            f"\t\t(mainModule) time consume: {(time.time()-time_start):0,.2f}\n\t\t{time.time()-subtime}",
+            f"\t\t(mainModule) time consume: {(time.time()-time_start):0,.2f}",
         )
         del cmds, first_dump_sent, second_dump_sent
         gc.collect()
