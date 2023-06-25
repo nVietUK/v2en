@@ -311,7 +311,7 @@ if __name__ == "__main__":
         time_start = time.time()
         if isEmpty(first_path) or isEmpty(second_path):
             logger.log(101, "Done!")
-            exit()
+            break
 
         first_dump_sent, second_dump_sent, cmds = [], [], []
 
@@ -334,7 +334,7 @@ if __name__ == "__main__":
                     Exception("Too many fatal translation!"),
                     False,
                 )
-                main_execute = False
+#                main_execute = False
         createOBJPool(cmds, sql_connection)
 
         if main_execute:
