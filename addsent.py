@@ -69,6 +69,7 @@ if __name__ == "__main__":
                 for idx in range(num_sent if len(saveIN) > num_sent else len(saveIN))
             ],
             Pool,
+            False,
             strictOrder=True,
         ):
             if e[0] != "" and e[1] != "":

@@ -1,10 +1,11 @@
-import os, string, httpx, sqlite3, resource, time, yaml, logging, librosa, string, gc
-import deep_translator.exceptions, langcodes, translators.server, execjs._exceptions, deep_translator
+import os, string, httpx, sqlite3, resource, time, yaml, logging, librosa, string, gc, asyncio
+import deep_translator.exceptions, langcodes, translators.server, requests
 from difflib import SequenceMatcher
-from multiprocess.pool import ThreadPool, TimeoutError as TLE
+from multiprocess.pool import ThreadPool, TimeoutError as TLE # type: ignore
 from tabulate import tabulate
 from tqdm import tqdm
 from translators.server import TranslatorsServer
+from functools import lru_cache
 
 
 # classes
@@ -38,8 +39,11 @@ def addSentExecutor(cmd):
     return addSent(*cmd)
 
 
-def translatorsTransExecutor(cmd, *args, **kwargs):
-    return translatorsTrans(*cmd, *args, **kwargs)
+def checkSpellingExecutor(cmd):
+    return checkSpelling(*cmd)
+
+def translatorsTransExecutor(cmd):
+    return translatorsTrans(*cmd)
 
 
 # utils
@@ -62,6 +66,7 @@ def convert(x: str) -> str:
     return x.lower().replace("  ", " ").replace("  ", " ")
 
 
+@lru_cache(maxsize=1024)
 def get_wiktionary_headers(word: str) -> httpx.Response:
     return httpx.get(f"https://en.wiktionary.org/wiki/{word}")
 
@@ -90,7 +95,7 @@ def playFreq(freq, duration):
 
 
 def playSound(melody: list, duration: list):
-    melody = librosa.note_to_hz(melody)
+    melody = librosa.note_to_hz(melody)  # type: ignore
     for note, dur in zip(melody, duration):
         playFreq(note, dur)
 
@@ -242,7 +247,7 @@ def translatorsTrans(
             return _extracted_from_translatorsTrans_13(
                 cmd, e, trans, trans_timeout / 2, tname
             )
-    except (execjs._exceptions.RuntimeUnavailableError, TypeError, ValueError):
+    except (TypeError, ValueError):
         pass
     except Exception as e:
         printError(translatorsTrans.__name__, e, False)
@@ -332,10 +337,6 @@ def checkSpelling(
     except Exception as e:
         printError(checkSpelling.__name__, e)
     return ["", ""] if tname else ""
-
-
-def checkSpellingExecutor(cmd):
-    return checkSpelling(*cmd)
 
 
 @measure
