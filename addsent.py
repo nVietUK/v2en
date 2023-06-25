@@ -44,7 +44,7 @@ from v2enlib import (
 
 
 # thread utils
-def funcPool(func, cmds, executor, isAllowThread=True):
+def funcPool(func, cmds, executor, isAllowThread=True, strictOrder=False)->list:
     try:
         with executor(
             min(len(cmds), thread_limit if thread_limit > 0 else len(cmds)),
@@ -53,7 +53,11 @@ def funcPool(func, cmds, executor, isAllowThread=True):
                 return [func(cmd) for cmd in tqdm(cmds, leave=False)]
             with tqdm(total=len(cmds), leave=False) as pbar:
                 results = []
-                for res in ex.imap_unordered(func, cmds):
+                for res in (
+                    ex.imap(func, cmds)
+                    if strictOrder
+                    else ex.imap_unordered(func, cmds)
+                ):
                     pbar.update(1)
                     results.append(res)
                 return results
@@ -78,9 +82,11 @@ def deepTransGoogle(x: str, source: str, target: str) -> str:
 
 
 @measure
-def translatorsTrans(trans, cmd: list, trans_timeout, isDived: bool = False):
+def translatorsTrans(
+    trans, cmd: list, trans_timeout, tname: str = "", isDived: bool = False
+) -> list:
     try:
-        return func_timeout(
+        ou = func_timeout(
             trans_timeout,
             trans,
             query_text=cmd[0],
@@ -88,18 +94,21 @@ def translatorsTrans(trans, cmd: list, trans_timeout, isDived: bool = False):
             to_language=cmd[2],
             default_value="",
         )
+        return [ou, tname]
     except translators.server.TranslatorError as e:
         if not isDived:
-            return _extracted_from_translatorsTrans_13(cmd, e, trans, trans_timeout / 2)
+            return _extracted_from_translatorsTrans_13(
+                cmd, e, trans, trans_timeout / 2, tname
+            )
     except (execjs._exceptions.RuntimeUnavailableError, TypeError, ValueError):
         pass
     except Exception as e:
         printError(translatorsTrans.__name__, e, False)
-    return deepTransGoogle(*cmd)
+    return [deepTransGoogle(*cmd), "google"]
 
 
 # TODO Rename this here and in `translatorsTrans`
-def _extracted_from_translatorsTrans_13(cmd, e, trans, trans_timeout):
+def _extracted_from_translatorsTrans_13(cmd, e, trans, trans_timeout, tname) -> list:
     try:
         tcmd, execute = cmd.copy(), False
         if (e.args[0]).find("vie") != -1:
@@ -113,9 +122,13 @@ def _extracted_from_translatorsTrans_13(cmd, e, trans, trans_timeout):
         if (e.args[0]).find("vi-VN") != -1:
             tcmd[2 if (e.args[0]).find("to_language") != -1 else 1] = "vi-VN"
             execute = True
-        return translatorsTrans(trans, tcmd, trans_timeout, True) if execute else ""
+        return (
+            translatorsTrans(trans, tcmd, trans_timeout, tname, True)
+            if execute
+            else ["", ""]
+        )
     except IndexError:
-        return ""
+        return ["", ""]
 
 
 def translatorsTransExecutor(cmd, *args, **kwargs):
@@ -124,14 +137,19 @@ def translatorsTransExecutor(cmd, *args, **kwargs):
 
 @measure
 def transIntoList(sent, source_lang, target_lang, target_dictionary):
-    ou = funcPool(
+    return funcPool(
         checkSpellingExecutor,
         [
-            [convert(e), target_dictionary, target_lang]
+            [convert(e[0]), target_dictionary, target_lang, e[1]]
             for e in funcPool(
                 translatorsTransExecutor,
                 [
-                    [trans, [sent, source_lang, target_lang], trans_timeout]
+                    [
+                        trans,
+                        [sent, source_lang, target_lang],
+                        trans_timeout,
+                        name,
+                    ]
                     for name, trans in translator.translators_dict.items()
                 ],
                 ThreadPool,
@@ -139,7 +157,6 @@ def transIntoList(sent, source_lang, target_lang, target_dictionary):
         ],
         ThreadPool,
     )
-    return list(zip(ou, translator.translators_dict.keys()))
 
 
 def transIntoListExecutor(cmd):
@@ -147,7 +164,9 @@ def transIntoListExecutor(cmd):
 
 
 # language utils
-def checkSpelling(text: str, dictionary: list, lang: str) -> str:
+def checkSpelling(
+    text: str, dictionary: list, lang: str, tname: str = ""
+) -> str | list:
     word = ""
     try:
         words = text.split()
@@ -169,7 +188,7 @@ def checkSpelling(text: str, dictionary: list, lang: str) -> str:
                 raise ValueError(f"{word} not existed")
             if word.isalpha() and word not in dictionary:
                 dictionary.insert(0, word)
-        return outstr
+        return [outstr, tname] if tname else outstr
     except ValueError:
         printError(
             f"add word for {lang}",
@@ -178,7 +197,7 @@ def checkSpelling(text: str, dictionary: list, lang: str) -> str:
         )
     except Exception as e:
         printError(checkSpelling.__name__, e)
-    return ""
+    return ["", ""] if tname else ""
 
 
 def checkSpellingExecutor(cmd):
@@ -205,6 +224,7 @@ def addSent(input_sent: InputSent):
             ],
         ],
         ThreadPool,
+        strictOrder=True
     )
     if input_sent.isValid():
         is_error = True
@@ -233,7 +253,7 @@ def addSent(input_sent: InputSent):
                 diffratio(input_sent.first, second_tran[0]),
             )
             for second_tran in second_trans
-            if second_tran[0]
+            if second_tran[0]   
         ]
 
         if any(e.isAdd for e in trans_data):
@@ -261,7 +281,7 @@ def addSent(input_sent: InputSent):
             first_dump_sent, second_dump_sent = input_sent.first, input_sent.second
 
         print_data = [["Data set", input_sent.first, input_sent.second, "N/A"]] + [
-            [e.isFrom, e.first, e.second, e.accurate] for e in trans_data if e.isAdd
+            [e.isFrom, e.first, e.second, e.accurate] for e in trans_data
         ]
         width = int(terminalWidth() / 4)
         logger.log(
@@ -322,6 +342,7 @@ if __name__ == "__main__":
                 for idx in range(num_sent if len(saveIN) > num_sent else len(saveIN))
             ],
             Pool,
+            strictOrder=True
         ):
             if e[0] != "" and e[1] != "":
                 first_dump_sent.append(e[0])
@@ -334,7 +355,7 @@ if __name__ == "__main__":
                     Exception("Too many fatal translation!"),
                     False,
                 )
-#                main_execute = False
+        #                main_execute = False
         createOBJPool(cmds, sql_connection)
 
         if main_execute:

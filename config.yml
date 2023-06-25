@@ -4,10 +4,10 @@ sqlite:
 v2en:
     target: en-vi
     accept_percentage: 0.65
-    time_allow: 12
+    time_allow: 30
     resource_allow: 1
     num_sent: 10
     thread:
         allow: true
         limit: 0
-    trans_timeout: 8
+    trans_timeout: 10

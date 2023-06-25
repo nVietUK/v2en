@@ -1,6 +1,6 @@
 import os, string, httpx, langcodes, sqlite3, resource, time, yaml, logging, librosa
 from difflib import SequenceMatcher
-from multiprocess.pool import TimeoutError, Pool
+from multiprocess.pool import ThreadPool, TimeoutError as TLE
 
 
 # classes
@@ -107,14 +107,14 @@ def saveDictionary(path, dictionary):
 def function_timeout(s):
     def outer(fn):
         def inner(*args, **kwargs):
-            with Pool(1) as p:
-                result = p.apply_async(fn, args=args, kwds=kwargs)
-                output = kwargs["default_value"]
+            with ThreadPool(processes=1) as pool:
+                result = pool.apply_async(fn, args=args, kwds=kwargs)
+                output = kwargs.get("default_value", None)
                 try:
                     output = result.get(timeout=s)
-                except TimeoutError:
-                    p.terminate()
-                p.join()
+                except TLE:
+                    pool.terminate()
+                    pool.join()
                 return output
 
         return inner
