@@ -1,7 +1,8 @@
 import os, string, httpx, sqlite3, resource, time, yaml, logging, librosa, string, gc
-import deep_translator.exceptions, langcodes, concurrent.futures, requests
+import deep_translator.exceptions, langcodes, requests, traceback
 from difflib import SequenceMatcher
-from multiprocess.pool import ThreadPool, TimeoutError as TLE  # type: ignore
+from multiprocess.pool import ThreadPool
+from multiprocess.context import TimeoutError as TLE
 from tabulate import tabulate
 from tqdm import tqdm
 from translators import server
@@ -82,6 +83,9 @@ def cleanScreen() -> None:
     os.system("cls" if os.name == "nt" else "clear")
 
 
+def get_keys_by_value(d, value):
+    return [k for k, v in d.items() if v == value]
+
 def playFreq(freq, duration):
     if os.name == "nt":
         import winsound
@@ -131,10 +135,9 @@ def function_timeout(s):
                 result = pool.apply_async(fn, args=args, kwds=kwargs)
                 output = kwargs.get("default_value", None)
                 try:
-                    output = result.get(timeout=s)
+                    output = result.get(timeout=s) if s else result.get()
                 except TLE:
-                    pool.terminate()
-                    pool.join()
+                    pass
                 return output
 
         return inner
@@ -175,31 +178,60 @@ def terminalWidth():
 
 # thread utils
 def funcPool(func, cmds, executor, isAllowThread=True, strictOrder=False) -> list:
-    try:
-        with executor(
-            min(len(cmds), thread_limit if thread_limit > 0 else len(cmds)),
-        ) as ex:
-            if not thread_alow or not isAllowThread:
-                return [func(cmd) for cmd in tqdm(cmds, leave=False)]
-            with tqdm(total=len(cmds), leave=False) as pbar:
-                results = []
-                for res in (
-                    ex.imap(func, cmds)
-                    if strictOrder
-                    else ex.imap_unordered(func, cmds)
-                ):
-                    pbar.update(1)
-                    results.append(res)
-                return results
-    except Exception as e:
-        printError("funcPool", e, False)
-    return []
+    with executor(
+        min(len(cmds), thread_limit if thread_limit > 0 else len(cmds)),
+    ) as ex:
+        if not thread_alow or not isAllowThread:
+            return [func(cmd) for cmd in tqdm(cmds, leave=False)]
+        with tqdm(total=len(cmds), leave=False) as pbar:
+            results = []
+            for res in (
+                ex.imap(func, cmds)
+                if strictOrder
+                else ex.imap_unordered(func, cmds)
+            ):
+                pbar.update(1)
+                results.append(res)
+            return results
+
+
+def argsPool(
+    funcs: list,
+    executor,
+    subexecutor,
+    isAllowThread=True,
+    strictOrder=False,
+    *args,
+    **kwargs,
+) -> list:
+    with executor(
+        min(len(funcs), thread_limit if thread_limit > 0 else len(funcs)),
+    ) as ex:
+        if not thread_alow or not isAllowThread:
+            return [
+                subexecutor([func, args, kwargs])
+                for func in tqdm(funcs, leave=False)
+            ]
+        with tqdm(total=len(funcs), leave=False) as pbar:
+            results = []
+            argsc = [args] * len(funcs)
+            kwargsc = [dict(kwargs) for _ in range(len(funcs))] 
+            for res in (
+                ex.imap(subexecutor, [[func, argsc[i], kwargsc[i]] for i, func in enumerate(funcs)])
+                if strictOrder
+                else ex.imap_unordered(
+                    subexecutor,
+                    [[func, argsc[i], kwargsc[i]] for i, func in enumerate(funcs)],
+                )
+            ):
+                pbar.update(1)
+                results.append(res)
+            return results
 
 
 # debug def
 def printError(text, error, is_exit=True):
-    if error == OSError:
-        return
+    # traceback.print_exc()
     logger.fatal(
         f"{'_'*50}\n\tExpectation while {text}\n\tError type: {type(error)}\n\t{error}\n{chr(8254)*50}"
     )
@@ -212,14 +244,16 @@ def printInfo(name, pid):
 
 
 # translate def
-def deepTransGoogle(x: str, source: str, target: str) -> str:
+def deepTransGoogle(query_text: str, from_language: str, to_language: str) -> str:
     try:
-        return deep_translator.GoogleTranslator(source=source, target=target).translate(
-            x
-        )
+        return deep_translator.GoogleTranslator(
+            source=from_language, target=to_language
+        ).translate(query_text)
     except deep_translator.exceptions.LanguageNotSupportedException:
         return deepTransGoogle(
-            x, str(langcodes.Language.get(source)), str(langcodes.Language.get(target))
+            query_text,
+            str(langcodes.Language.get(from_language)),
+            str(langcodes.Language.get(to_language)),
         )
     except Exception as e:
         printError(deepTransGoogle.__name__, e, False)
@@ -227,44 +261,52 @@ def deepTransGoogle(x: str, source: str, target: str) -> str:
 
 
 @measure
-def translatorsTrans(cmd: list, trans_timeout, isDived: bool = False) -> list:
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        trans_futures = {}
-        for name, trans in translator.translators_dict.items():
-            future = executor.submit(
-                trans,
-                query_text=cmd[0],
-                from_language=cmd[1],
-                to_language=cmd[2],
-            )
-            trans_futures[name] = [future, trans]
-        results = []
-        for name, pair in trans_futures.items():
-            try:
-                ou = pair[0].result(timeout=trans_timeout)
-                results.append([ou, name])
-            except server.TranslatorError as e:
-                if not isDived:
-                    results.append(
-                        _extracted_from_translatorsTrans_13(
-                            cmd, e, pair[1], trans_timeout / 2, name
-                        )
-                    )
-            except (
-                requests.exceptions.JSONDecodeError,
-                concurrent.futures._base.TimeoutError,
-            ):
-                pass
-            except Exception as e:
-                printError(name, e, False)
-        return results
+def translatorsTransSub(cmd: list):
+    timeout = cmd[2].get("timeout", None)
+    trans_name = get_keys_by_value(trans_dict, cmd[0])[0]
+    @function_timeout(timeout*3/2+5)
+    def execute(cmd: list):
+        ou = ""
+        if timeout:
+            del cmd[2]["timeout"]
+        try:
+            if cmd[1]:
+                ou = func_timeout(timeout, cmd[0], *cmd[1], **cmd[2])
+            else:
+                ou = func_timeout(timeout, cmd[0], **cmd[2])
+        except server.TranslatorError as e:
+            if tcmd := _extracted_from_translatorsTrans_13(cmd[2].values(), e):
+                ou = func_timeout(timeout/2, cmd[0], *tcmd)
+        except requests.exceptions.JSONDecodeError:
+            pass
+        except KeyError:
+            pass
+        except Exception as e:
+            printError("translatorsTransSub", e, False)
+        if timeout:
+            cmd[2]['timeout']=timeout
+        return [ou, trans_name] if ou else ['', trans_name]
+
+    return execute(cmd)
+
+
+@measure
+def translatorsTrans(cmd: list, trans_timeout) -> list:
+    return argsPool(
+        trans_dict.values(),
+        ThreadPool,
+        translatorsTransSub,
+        query_text=cmd[0],
+        from_language=cmd[1],
+        to_language=cmd[2],
+        timeout=trans_timeout,
+    )
 
 
 # TODO Rename this here and in `translatorsTrans`
-@measure
-def _extracted_from_translatorsTrans_13(cmd, e, trans, trans_timeout, tname) -> list:
+def _extracted_from_translatorsTrans_13(cmd: list, e) -> list | None:
     try:
-        tcmd, execute = cmd.copy(), False
+        tcmd, execute = list(cmd), False
         if (e.args[0]).find("vie") != -1:
             tcmd[2 if (e.args[0]).find("to_language") != -1 else 1] = "vie"
             execute = True
@@ -276,22 +318,11 @@ def _extracted_from_translatorsTrans_13(cmd, e, trans, trans_timeout, tname) -> 
         if (e.args[0]).find("vi-VN") != -1:
             tcmd[2 if (e.args[0]).find("to_language") != -1 else 1] = "vi-VN"
             execute = True
-        return (
-            [
-                func_timeout(
-                    trans_timeout,
-                    trans,
-                    query_text=tcmd[0],
-                    from_language=tcmd[1],
-                    to_language=tcmd[2],
-                ),
-                tname,
-            ]
-            if execute
-            else ["", tname]
-        )
+        return tcmd if execute else None
     except IndexError:
-        return ["", tname]
+        return None
+    except Exception as e:
+        printError("change format language", e, False)
 
 
 @measure
@@ -372,7 +403,7 @@ def addSent(input_sent: InputSent, first_dictionary, second_dictionary):
                 [input_sent.second, second_lang, first_lang, first_dictionary],
             ],
             ThreadPool,
-            False,
+            strictOrder= True
         )
         trans_data = [
             InputSent(
@@ -467,14 +498,13 @@ def createOBJPool(cmds, conn):
         createOBJ(*cmd, conn=conn)
 
 
-def getSQLCursor(path) -> sqlite3.Connection:
+def getSQLCursor(path) -> sqlite3.Connection:  # type: ignore
     try:
         sqliteConnection = sqlite3.connect(path)
         print("Database created and Successfully Connected to SQLite")
         return sqliteConnection
     except Exception as e:
         printError(getSQLCursor.__name__, e, True)
-        exit(0)
 
 
 def getSQL(conn, request):
@@ -494,8 +524,8 @@ resource_allow = cfg["v2en"]["resource_allow"]
 thread_alow = cfg["v2en"]["thread"]["allow"]
 thread_limit = cfg["v2en"]["thread"]["limit"]
 table_name = cfg["sqlite"]["table_name"]
-translator = server.TranslatorsServer()
 trans_timeout = cfg["v2en"]["trans_timeout"]
+trans_dict = server.TranslatorsServer().translators_dict
 
 # logger init
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s\n%(message)s")

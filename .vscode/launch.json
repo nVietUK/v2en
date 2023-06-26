@@ -18,7 +18,7 @@
             "request": "launch",
             "program": "addsent.py",
             "console": "integratedTerminal",
-            "justMyCode": false,
+            "justMyCode": true,
             "subProcess": true,
         }
     ]
