@@ -94,7 +94,9 @@ def play_note(note, duration, volume):
     """
     sr = 44100  # sample rate
     freq = librosa.note_to_hz(note)
-    samples = scipy.signal.sawtooth(2 * np.pi * np.arange(sr * duration) * freq / sr, 0.5)
+    samples = scipy.signal.sawtooth(
+        2 * np.pi * np.arange(sr * duration) * freq / sr, 0.5
+    )
     decay = np.linspace(volume, 0, int(sr * duration))
     scaled = samples * decay
     scaled /= np.max(np.abs(scaled))
@@ -103,41 +105,42 @@ def play_note(note, duration, volume):
     hash = hashlib.sha256(scaled).hexdigest()
 
     # Create subdirectory for stored audio files
-    os.makedirs('audio_files', exist_ok=True)
+    os.makedirs(".wav", exist_ok=True)
 
     # Check if file with the same hash already exists
-    filename = os.path.join('audio_files', f'{hash}.wav')
+    filename = os.path.join(".wav", f"{hash}.wav")
     if not os.path.exists(filename):
         # Write scaled audio data to file
         sf.write(filename, scaled, sr)
 
     # Play audio file using appropriate command depending on platform
-    if platform.system() == 'Windows':
-        subprocess.Popen(['powershell', 'New-Object Media.SoundPlayer "{filename}"'.format(filename=filename)])
-    elif platform.system() == 'Darwin':
-        subprocess.Popen(['afplay', filename])
+    if platform.system() == "Windows":
+        subprocess.Popen(
+            [
+                "powershell",
+                'New-Object Media.SoundPlayer "{filename}"'.format(filename=filename),
+            ]
+        )
+    elif platform.system() == "Darwin":
+        subprocess.Popen(["afplay", filename])
     else:
-        subprocess.Popen(['play', '-q', filename])
-
+        subprocess.Popen(["play", "-q", filename])
 
 
 def play_notes(notes, durations, volume):
     """
-    Plays multiple notes simultaneously with varying durations and logarithmic volume scaling based on frequency using a
-    thread pool.
+    Plays multiple notes simultaneously with varying durations and decreasing volume using a thread pool.
     """
     pool = ThreadPool(len(notes))
     for i in range(len(notes)):
-        note = notes[i]
-        duration = durations[i]
-        midi = librosa.note_to_midi(note)
-        volume_scaled = volume * np.power(10, (midi - 69) / 12)
-        pool.apply_async(play_note, (note, duration, volume_scaled))
+        pool.apply_async(play_note, (notes[i], durations[i], volume - (i / len(notes))))
     pool.close()
     pool.join()
 
+notes = ["F#4", "C#5", "F#5", "C#6", "F#6", "A#6"]
+durations = [0.20, 0.16, 0.16, 0.20, 0.20, 0.40]
 
-play_notes(["C#4", "F#2", "A#2", "F#3", "A#3"], [5/3]*5, 1)
+play_notes(notes, durations, 1)
 
 
 def checkLangFile(*args):
@@ -565,6 +568,7 @@ thread_limit = cfg["v2en"]["thread"]["limit"]
 table_name = cfg["sqlite"]["table_name"]
 trans_timeout = cfg["v2en"]["trans_timeout"]
 trans_dict = server.TranslatorsServer().translators_dict
+sound_tracks = {'macos_startup': [["F#2", "C#3", "F#3", "C#4", "F#4", "A#4"], [5/3]*6]}
 
 # logger init
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s\n%(message)s")
