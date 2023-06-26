@@ -28,6 +28,7 @@ from v2enlib import (
     play_notes,
     InputSent,
     logger,
+    sound_tracks
 )
 
 
@@ -53,7 +54,7 @@ if __name__ == "__main__":
             saveIN, saveOU = first_file.read().splitlines(
                 True
             ), second_file.read().splitlines(True)
-    play_notes(["E3", "G3", "C4", "D4"], [200, 200, 500, 500], 1)
+    play_notes(*sound_tracks['macos_startup'])
     while main_execute:
         time_start = time.time()
         if isEmpty(first_path) or isEmpty(second_path):
@@ -110,4 +111,4 @@ if __name__ == "__main__":
     with open(f"./data/{second_lang}.dump", "a") as f:
         for sent in second_dump_sents:
             f.write(f"{sent}\n")
-play_notes(["C7", "A#6", "G6", "E6"], [200, 150, 100, 50], 1)
+play_notes(*sound_tracks["windows7_shutdown"])

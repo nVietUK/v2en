@@ -11,7 +11,12 @@ from functools import lru_cache
 
 # pre define
 sound_tracks = {
-    "macos_startup": [["F#2", "C#3", "F#3", "C#4", "F#4", "A#4"], [5 / 3] * 6, [0] * 6]
+    "macos_startup": [["F#2", "C#3", "F#3", "C#4", "F#4", "A#4"], [5 / 3] * 6, [0] * 6],
+    "windows7_shutdown": [
+        ["G#4", "E4", "B4", "C5"],
+        [0.25, 0.25, 0.25, 0.25],
+        [0.0, 0.3, 0.6, 0.9],
+    ],
 }
 
 
@@ -61,7 +66,7 @@ def isEmpty(path):
 
 def convert(x: str) -> str:
     # fix bad data
-    if "apos" in x or "quot" in x or "amp" in x:
+    if "apos" in x or "quot" in x or "amp" in x or not x:
         return ""
 
     x = x.replace("“", " “ ").replace("”", " ” ").replace("’", " ’ ")
@@ -152,9 +157,6 @@ def play_notes(notes, durations, note_start_times):
         )
     pool.close()
     pool.join()
-
-
-play_notes(*sound_tracks["macos_startup"])
 
 
 def checkLangFile(*args):
