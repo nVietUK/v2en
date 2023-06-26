@@ -1,10 +1,10 @@
-import os, string, httpx, sqlite3, resource, time, yaml, logging, librosa, string, gc, asyncio
-import deep_translator.exceptions, langcodes, translators.server, requests
+import os, string, httpx, sqlite3, resource, time, yaml, logging, librosa, string, gc
+import deep_translator.exceptions, langcodes, concurrent.futures, requests
 from difflib import SequenceMatcher
 from multiprocess.pool import ThreadPool, TimeoutError as TLE  # type: ignore
 from tabulate import tabulate
 from tqdm import tqdm
-from translators.server import TranslatorsServer
+from translators import server
 from functools import lru_cache
 
 
@@ -41,10 +41,6 @@ def addSentExecutor(cmd):
 
 def checkSpellingExecutor(cmd):
     return checkSpelling(*cmd)
-
-
-def translatorsTransExecutor(cmd):
-    return translatorsTrans(*cmd)
 
 
 # utils
@@ -92,13 +88,14 @@ def playFreq(freq, duration):
 
         winsound.Beep(freq, duration)
     else:
-        os.system(f"play -qn synth {duration/1000} sine {freq} >/dev/null 2>&1")
+        os.system(f"play -qn synth {duration/1000} sine {freq} >/dev/null 2>&1 &")
 
 
 def playSound(melody: list, duration: list):
     melody = librosa.note_to_hz(melody)  # type: ignore
     for note, dur in zip(melody, duration):
         playFreq(note, dur)
+        time.sleep(dur / 1000)
 
 
 def checkLangFile(*args):
@@ -230,32 +227,41 @@ def deepTransGoogle(x: str, source: str, target: str) -> str:
 
 
 @measure
-def translatorsTrans(
-    trans, cmd: list, trans_timeout, tname: str = "", isDived: bool = False
-) -> list:
-    try:
-        ou = func_timeout(
-            trans_timeout,
-            trans,
-            query_text=cmd[0],
-            from_language=cmd[1],
-            to_language=cmd[2],
-            default_value="",
-        )
-        return [ou, tname]
-    except translators.server.TranslatorError as e:
-        if not isDived:
-            return _extracted_from_translatorsTrans_13(
-                cmd, e, trans, trans_timeout / 2, tname
+def translatorsTrans(cmd: list, trans_timeout, isDived: bool = False) -> list:
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        trans_futures = {}
+        for name, trans in translator.translators_dict.items():
+            future = executor.submit(
+                trans,
+                query_text=cmd[0],
+                from_language=cmd[1],
+                to_language=cmd[2],
             )
-    except (TypeError, ValueError):
-        pass
-    except Exception as e:
-        printError(translatorsTrans.__name__, e, False)
-    return [deepTransGoogle(*cmd), "google"]
+            trans_futures[name] = [future, trans]
+        results = []
+        for name, pair in trans_futures.items():
+            try:
+                ou = pair[0].result(timeout=trans_timeout)
+                results.append([ou, name])
+            except server.TranslatorError as e:
+                if not isDived:
+                    results.append(
+                        _extracted_from_translatorsTrans_13(
+                            cmd, e, pair[1], trans_timeout / 2, name
+                        )
+                    )
+            except (
+                requests.exceptions.JSONDecodeError,
+                concurrent.futures._base.TimeoutError,
+            ):
+                pass
+            except Exception as e:
+                printError(name, e, False)
+        return results
 
 
 # TODO Rename this here and in `translatorsTrans`
+@measure
 def _extracted_from_translatorsTrans_13(cmd, e, trans, trans_timeout, tname) -> list:
     try:
         tcmd, execute = cmd.copy(), False
@@ -271,12 +277,21 @@ def _extracted_from_translatorsTrans_13(cmd, e, trans, trans_timeout, tname) -> 
             tcmd[2 if (e.args[0]).find("to_language") != -1 else 1] = "vi-VN"
             execute = True
         return (
-            translatorsTrans(trans, tcmd, trans_timeout, tname, True)
+            [
+                func_timeout(
+                    trans_timeout,
+                    trans,
+                    query_text=tcmd[0],
+                    from_language=tcmd[1],
+                    to_language=tcmd[2],
+                ),
+                tname,
+            ]
             if execute
-            else ["", ""]
+            else ["", tname]
         )
     except IndexError:
-        return ["", ""]
+        return ["", tname]
 
 
 @measure
@@ -285,19 +300,7 @@ def transIntoList(sent, source_lang, target_lang, target_dictionary):
         checkSpellingExecutor,
         [
             [convert(e[0]), target_dictionary, target_lang, e[1]]
-            for e in funcPool(
-                translatorsTransExecutor,
-                [
-                    [
-                        trans,
-                        [sent, source_lang, target_lang],
-                        trans_timeout,
-                        name,
-                    ]
-                    for name, trans in translator.translators_dict.items()
-                ],
-                ThreadPool,
-            )
+            for e in translatorsTrans([sent, source_lang, target_lang], trans_timeout)
         ],
         ThreadPool,
     )
@@ -369,6 +372,7 @@ def addSent(input_sent: InputSent, first_dictionary, second_dictionary):
                 [input_sent.second, second_lang, first_lang, first_dictionary],
             ],
             ThreadPool,
+            False,
         )
         trans_data = [
             InputSent(
@@ -490,7 +494,7 @@ resource_allow = cfg["v2en"]["resource_allow"]
 thread_alow = cfg["v2en"]["thread"]["allow"]
 thread_limit = cfg["v2en"]["thread"]["limit"]
 table_name = cfg["sqlite"]["table_name"]
-translator = TranslatorsServer()
+translator = server.TranslatorsServer()
 trans_timeout = cfg["v2en"]["trans_timeout"]
 
 # logger init
