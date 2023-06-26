@@ -8,6 +8,6 @@ v2en:
     resource_allow: 1
     num_sent: 10
     thread:
-        allow: true
+        allow: false
         limit: 0
-    trans_timeout: 10
+    trans_timeout: 8

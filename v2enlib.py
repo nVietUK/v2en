@@ -1,7 +1,7 @@
 import os, string, httpx, sqlite3, resource, time, yaml, logging, librosa, string, gc, asyncio
 import deep_translator.exceptions, langcodes, translators.server, requests
 from difflib import SequenceMatcher
-from multiprocess.pool import ThreadPool, TimeoutError as TLE # type: ignore
+from multiprocess.pool import ThreadPool, TimeoutError as TLE  # type: ignore
 from tabulate import tabulate
 from tqdm import tqdm
 from translators.server import TranslatorsServer
@@ -41,6 +41,7 @@ def addSentExecutor(cmd):
 
 def checkSpellingExecutor(cmd):
     return checkSpelling(*cmd)
+
 
 def translatorsTransExecutor(cmd):
     return translatorsTrans(*cmd)
@@ -303,9 +304,7 @@ def transIntoList(sent, source_lang, target_lang, target_dictionary):
 
 
 # language utils
-def checkSpelling(
-    text: str, dictionary: list, lang: str, tname: str = ""
-) -> str | list:
+def checkSpelling(text: str, dictionary: list, lang: str, tname: str = ""):
     word = ""
     try:
         words = text.split()

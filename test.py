@@ -1,4 +1,4 @@
-import re, os, pickle
+import re, pickle
 import tensorflow as tf
 import numpy as np
 from keras.utils import pad_sequences

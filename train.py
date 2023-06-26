@@ -1,4 +1,3 @@
-# Now importing modules
 import numpy as np
 from keras.preprocessing.text import Tokenizer
 from keras.utils import pad_sequences
@@ -13,29 +12,21 @@ from keras.layers import (
     Embedding,
 )
 from keras.optimizers import Adam
-import tensorflow as tf
-import pickle
+import tensorflow as tf, pickle, yaml, os
 from datetime import datetime
-import yaml
-from v2enlib import *
+from v2enlib import getSQLCursor, getSQL, cleanScreen
 import tensorflow_model_optimization as tfmot
-from tensorflow_model_optimization.sparsity.keras import (
-    strip_pruning,
-)
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
-from tensorflow_model_optimization.python.core.sparsity.keras.pruning_schedule import (
-    PruningSchedule,
-)
 
 with open("config.yml", "r") as f:
     cfg = yaml.safe_load(f)
 target = cfg["v2en"]["target"]
 model_path = "./models/model.keras"
-best_model_path = "./models/best.keras"
-initial_sparsity = 0.50
-final_sparsity = 0.90
-begin_step = 1000
-end_step = 5000
+learning_rate = 0.001
+initial_sparsity = 0.0
+final_sparsity = 0.9
+begin_step = 0
+end_step = 1000
 in_develop = False
 pruning_params = {
     "pruning_schedule": tfmot.sparsity.keras.PolynomialDecay(
@@ -108,7 +99,6 @@ def embed_model(
     :return: Keras model built, but not trained
     """
     # Config Hyperparameters
-    learning_rate = 0.001
     latent_dim = 128
 
     # Config Model
@@ -118,7 +108,7 @@ def embed_model(
     )(inputs)
     bd_layer = Bidirectional(GRU(output_sequence_length))(embedding_layer)
     encoding_layer = tfmot.sparsity.keras.prune_low_magnitude(
-        Dense(latent_dim, activation="relu"), **pruning_params
+        Dense(latent_dim, activation="relu"), **pruning_params  # type: ignore
     )(bd_layer)
     decoding_layer = RepeatVector(output_sequence_length)(encoding_layer)
     output_layer = Bidirectional(GRU(latent_dim, return_sequences=True))(decoding_layer)
@@ -129,8 +119,8 @@ def embed_model(
     model = Model(inputs=inputs, outputs=outputs)
     model.compile(
         loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-        optimizer="adam",
-        metrics=["accuracy"],
+        optimizer=Adam(learning_rate=learning_rate),
+        metrics=['accuracy', 'sparse_categorical_accuracy'],
     )
 
     return model
@@ -166,11 +156,11 @@ rnn_model = embed_model(
 
 # Prunning model feature
 checkpoint = ModelCheckpoint(
-    best_model_path, save_best_only=True, save_weights_only=True, verbose=1
+    model_path, save_best_only=True, save_weights_only=True, verbose=1
 )
 earlystop = EarlyStopping(monitor="val_loss", patience=5, verbose=1)
 reducelr = ReduceLROnPlateau(
-    monitor="val_loss", factor=0.2, patience=2, min_lr=0.0001, verbose=1
+    monitor="val_loss", factor=0.2, patience=2, min_lr=learning_rate, verbose=1
 )
 callbacks = [tfmot.sparsity.keras.UpdatePruningStep(), checkpoint, earlystop, reducelr]
 
@@ -189,8 +179,6 @@ try:
         callbacks=callbacks,
         verbose=1,
     )
-    rnn_model = strip_pruning(rnn_model.load_weights(best_model_path))
-    rnn_model.save(model_path)
 
     np.savetxt(
         f"./logs/{datetime.now().strftime('%d.%m.%Y %H-%M-%S')}.txt",
