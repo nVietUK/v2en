@@ -1,5 +1,6 @@
 import os, string, httpx, sqlite3, resource, time, yaml, logging, librosa, string, gc
-import deep_translator.exceptions, langcodes, requests, traceback
+import deep_translator.exceptions, langcodes, requests, traceback, platform, numpy as np
+import hashlib, subprocess, soundfile as sf, scipy
 from difflib import SequenceMatcher
 from multiprocess.pool import ThreadPool
 from multiprocess.context import TimeoutError as TLE
@@ -86,20 +87,57 @@ def cleanScreen() -> None:
 def get_keys_by_value(d, value):
     return [k for k, v in d.items() if v == value]
 
-def playFreq(freq, duration):
-    if os.name == "nt":
-        import winsound
 
-        winsound.Beep(freq, duration)
+def play_note(note, duration, volume):
+    """
+    Plays a single note with the given duration and volume using the soundfile library.
+    """
+    sr = 44100  # sample rate
+    freq = librosa.note_to_hz(note)
+    samples = scipy.signal.sawtooth(2 * np.pi * np.arange(sr * duration) * freq / sr, 0.5)
+    decay = np.linspace(volume, 0, int(sr * duration))
+    scaled = samples * decay
+    scaled /= np.max(np.abs(scaled))
+
+    # Compute hash of audio data
+    hash = hashlib.sha256(scaled).hexdigest()
+
+    # Create subdirectory for stored audio files
+    os.makedirs('audio_files', exist_ok=True)
+
+    # Check if file with the same hash already exists
+    filename = os.path.join('audio_files', f'{hash}.wav')
+    if not os.path.exists(filename):
+        # Write scaled audio data to file
+        sf.write(filename, scaled, sr)
+
+    # Play audio file using appropriate command depending on platform
+    if platform.system() == 'Windows':
+        subprocess.Popen(['powershell', 'New-Object Media.SoundPlayer "{filename}"'.format(filename=filename)])
+    elif platform.system() == 'Darwin':
+        subprocess.Popen(['afplay', filename])
     else:
-        os.system(f"play -qn synth {duration/1000} sine {freq} >/dev/null 2>&1 &")
+        subprocess.Popen(['play', '-q', filename])
 
 
-def playSound(melody: list, duration: list):
-    melody = librosa.note_to_hz(melody)  # type: ignore
-    for note, dur in zip(melody, duration):
-        playFreq(note, dur)
-        time.sleep(dur / 1000)
+
+def play_notes(notes, durations, volume):
+    """
+    Plays multiple notes simultaneously with varying durations and logarithmic volume scaling based on frequency using a
+    thread pool.
+    """
+    pool = ThreadPool(len(notes))
+    for i in range(len(notes)):
+        note = notes[i]
+        duration = durations[i]
+        midi = librosa.note_to_midi(note)
+        volume_scaled = volume * np.power(10, (midi - 69) / 12)
+        pool.apply_async(play_note, (note, duration, volume_scaled))
+    pool.close()
+    pool.join()
+
+
+play_notes(["C#4", "F#2", "A#2", "F#3", "A#3"], [5/3]*5, 1)
 
 
 def checkLangFile(*args):
@@ -186,9 +224,7 @@ def funcPool(func, cmds, executor, isAllowThread=True, strictOrder=False) -> lis
         with tqdm(total=len(cmds), leave=False) as pbar:
             results = []
             for res in (
-                ex.imap(func, cmds)
-                if strictOrder
-                else ex.imap_unordered(func, cmds)
+                ex.imap(func, cmds) if strictOrder else ex.imap_unordered(func, cmds)
             ):
                 pbar.update(1)
                 results.append(res)
@@ -209,15 +245,17 @@ def argsPool(
     ) as ex:
         if not thread_alow or not isAllowThread:
             return [
-                subexecutor([func, args, kwargs])
-                for func in tqdm(funcs, leave=False)
+                subexecutor([func, args, kwargs]) for func in tqdm(funcs, leave=False)
             ]
         with tqdm(total=len(funcs), leave=False) as pbar:
             results = []
             argsc = [args] * len(funcs)
-            kwargsc = [dict(kwargs) for _ in range(len(funcs))] 
+            kwargsc = [dict(kwargs) for _ in range(len(funcs))]
             for res in (
-                ex.imap(subexecutor, [[func, argsc[i], kwargsc[i]] for i, func in enumerate(funcs)])
+                ex.imap(
+                    subexecutor,
+                    [[func, argsc[i], kwargsc[i]] for i, func in enumerate(funcs)],
+                )
                 if strictOrder
                 else ex.imap_unordered(
                     subexecutor,
@@ -264,7 +302,8 @@ def deepTransGoogle(query_text: str, from_language: str, to_language: str) -> st
 def translatorsTransSub(cmd: list):
     timeout = cmd[2].get("timeout", None)
     trans_name = get_keys_by_value(trans_dict, cmd[0])[0]
-    @function_timeout(timeout*3/2+5)
+
+    @function_timeout(timeout * 3 / 2 + 5)
     def execute(cmd: list):
         ou = ""
         if timeout:
@@ -276,7 +315,7 @@ def translatorsTransSub(cmd: list):
                 ou = func_timeout(timeout, cmd[0], **cmd[2])
         except server.TranslatorError as e:
             if tcmd := _extracted_from_translatorsTrans_13(cmd[2].values(), e):
-                ou = func_timeout(timeout/2, cmd[0], *tcmd)
+                ou = func_timeout(timeout / 2, cmd[0], *tcmd)
         except requests.exceptions.JSONDecodeError:
             pass
         except KeyError:
@@ -284,8 +323,8 @@ def translatorsTransSub(cmd: list):
         except Exception as e:
             printError("translatorsTransSub", e, False)
         if timeout:
-            cmd[2]['timeout']=timeout
-        return [ou, trans_name] if ou else ['', trans_name]
+            cmd[2]["timeout"] = timeout
+        return [ou, trans_name] if ou else ["", trans_name]
 
     return execute(cmd)
 
@@ -403,7 +442,7 @@ def addSent(input_sent: InputSent, first_dictionary, second_dictionary):
                 [input_sent.second, second_lang, first_lang, first_dictionary],
             ],
             ThreadPool,
-            strictOrder= True
+            strictOrder=True,
         )
         trans_data = [
             InputSent(
