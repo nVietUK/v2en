@@ -20,12 +20,12 @@ import yaml
 from v2enlib import *
 import tensorflow_model_optimization as tfmot
 from tensorflow_model_optimization.sparsity.keras import (
-    UpdatePruningStep,
     strip_pruning,
-    prune_low_magnitude,
-    PolynomialDecay,
 )
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
+from tensorflow_model_optimization.python.core.sparsity.keras.pruning_schedule import (
+    PruningSchedule,
+)
 
 with open("config.yml", "r") as f:
     cfg = yaml.safe_load(f)
@@ -37,19 +37,35 @@ final_sparsity = 0.90
 begin_step = 1000
 end_step = 5000
 in_develop = False
-pruning_schedule = tfmot.sparsity.keras.PolynomialDecay(
-    initial_sparsity=initial_sparsity,
-    final_sparsity=final_sparsity,
-    begin_step=begin_step,
-    end_step=end_step,
-    power=5,
-    frequency=100,
-)
+pruning_params = {
+    "pruning_schedule": tfmot.sparsity.keras.PolynomialDecay(
+        initial_sparsity=initial_sparsity,
+        final_sparsity=final_sparsity,
+        begin_step=begin_step,
+        end_step=end_step,
+    )
+}
+
 
 # check if gpu avaliable
-if len(tf.config.list_physical_devices("GPU")) == 0:
+gpus = tf.config.list_physical_devices("GPU")
+if len(gpus) == 0:
     print("test is only applicable on GPU")
     exit(0)
+else:
+    try:
+        # Currently, memory growth needs to be the same across GPUs
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+            tf.config.set_logical_device_configuration(
+                gpu, [tf.config.LogicalDeviceConfiguration(memory_limit=4096)]
+            )
+        logical_gpus = tf.config.list_logical_devices("GPU")
+        print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+    except RuntimeError as e:
+        # Memory growth must be set before GPUs have been initialized
+        print(e)
+os.environ["TF_GPU_ALLOCATOR"] = "cuda_malloc_async"
 
 
 def tokenize(x):
@@ -101,22 +117,19 @@ def embed_model(
         input_dim=input_vocab_size, output_dim=output_sequence_length, mask_zero=False
     )(inputs)
     bd_layer = Bidirectional(GRU(output_sequence_length))(embedding_layer)
-    encoding_layer = prune_low_magnitude(
-        Dense(latent_dim, activation="relu"), pruning_schedule=pruning_schedule
+    encoding_layer = tfmot.sparsity.keras.prune_low_magnitude(
+        Dense(latent_dim, activation="relu"), **pruning_params
     )(bd_layer)
     decoding_layer = RepeatVector(output_sequence_length)(encoding_layer)
     output_layer = Bidirectional(GRU(latent_dim, return_sequences=True))(decoding_layer)
     outputs = TimeDistributed(
-        prune_low_magnitude(
-            Dense(output_vocab_size, activation="softmax"),
-            pruning_schedule=pruning_schedule,
-        )
+        Dense(output_vocab_size, activation="softmax"),
     )(output_layer)
 
     model = Model(inputs=inputs, outputs=outputs)
     model.compile(
         loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-        optimizer=Adam(learning_rate),
+        optimizer="adam",
         metrics=["accuracy"],
     )
 
@@ -159,7 +172,7 @@ earlystop = EarlyStopping(monitor="val_loss", patience=5, verbose=1)
 reducelr = ReduceLROnPlateau(
     monitor="val_loss", factor=0.2, patience=2, min_lr=0.0001, verbose=1
 )
-callbacks = [UpdatePruningStep(), checkpoint, earlystop, reducelr]
+callbacks = [tfmot.sparsity.keras.UpdatePruningStep(), checkpoint, earlystop, reducelr]
 
 try:
     if in_develop:
@@ -170,8 +183,8 @@ try:
     history = rnn_model.fit(
         tmp_x,
         second_preproc_sentences,
-        batch_size=4096,
-        epochs=20,
+        batch_size=128,
+        epochs=10,
         validation_split=0.2,
         callbacks=callbacks,
         verbose=1,

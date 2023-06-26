@@ -4,9 +4,10 @@ WORKDIR /home
 ARG TZ="Asia/ho_chi_minh"
 ARG DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-c"] 
+USER root
 
 RUN apt update && apt -y install curl ca-certificates libcublas-12-1 libcublas-dev-12-1 \
-# fixed slow apt download: https://github.com/NobodyXu/apt-fast-docker/blob/master/Dockerfile
+    # fixed slow apt download: https://github.com/NobodyXu/apt-fast-docker/blob/master/Dockerfile
     software-properties-common
 RUN add-apt-repository ppa:apt-fast/stable
 RUN apt install apt-fast -y
@@ -22,14 +23,14 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | d
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
 
 RUN apt-fast install gcc git git-lfs vim firefox gh \
-# xrdp features at https://github.com/danchitnis/container-xrdp/blob/master/ubuntu-xfce/Dockerfile
+    # xrdp features at https://github.com/danchitnis/container-xrdp/blob/master/ubuntu-xfce/Dockerfile
     xfce4 xfce4-terminal xfce4-xkb-plugin \
     sudo xorgxrdp xrdp \
-# ssh server
+    # ssh server
     openssh-server \
-# nodejs 
+    # nodejs 
     nodejs \
-# clean stage
+    # clean stage
     -y && apt-fast clean && \
     apt-fast remove -y light-locker xscreensaver && \
     apt-fast autoremove -y && \
@@ -52,10 +53,25 @@ COPY ./.sh/run.sh /usr/bin/
 RUN chmod +x /usr/bin/run.sh
 
 RUN service ssh start
-EXPOSE 22
 EXPOSE 24444
 EXPOSE 80
 EXPOSE 443
 
 # fix sound issue: https://superuser.com/questions/1539634/pulseaudio-daemon-wont-start-inside-docker
 RUN adduser root pulse-access
+
+# Create SSH keys
+RUN ssh-keygen -t rsa -N "" -f /root/.ssh/id_rsa
+
+# Copy public key to container
+COPY id_rsa.pub /root/.ssh/authorized_keys
+
+# Fix permissions
+RUN chmod 600 /root/.ssh/authorized_keys && \
+    chown root:root /root/.ssh/authorized_keys
+
+# Expose necessary ports for SSH access
+EXPOSE 22/tcp
+
+# Set command to run on container start
+CMD ["/usr/sbin/sshd", "-D"]
