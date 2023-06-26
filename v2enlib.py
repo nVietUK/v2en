@@ -9,6 +9,11 @@ from tqdm import tqdm
 from translators import server
 from functools import lru_cache
 
+# pre define
+sound_tracks = {
+    "macos_startup": [["F#2", "C#3", "F#3", "C#4", "F#4", "A#4"], [5 / 3] * 6, [0] * 6]
+}
+
 
 # classes
 class InputSent:
@@ -88,16 +93,16 @@ def get_keys_by_value(d, value):
     return [k for k, v in d.items() if v == value]
 
 
-def play_note(note, duration, volume):
+def play_note(note, duration, volume, note_duration, start_time):
     """
     Plays a single note with the given duration and volume using the soundfile library.
     """
     sr = 44100  # sample rate
     freq = librosa.note_to_hz(note)
     samples = scipy.signal.sawtooth(
-        2 * np.pi * np.arange(sr * duration) * freq / sr, 0.5
+        2 * np.pi * np.arange(sr * note_duration) * freq / sr, 0.5
     )
-    decay = np.linspace(volume, 0, int(sr * duration))
+    decay = np.linspace(volume, 0, int(sr * note_duration))
     scaled = samples * decay
     scaled /= np.max(np.abs(scaled))
 
@@ -113,6 +118,8 @@ def play_note(note, duration, volume):
         # Write scaled audio data to file
         sf.write(filename, scaled, sr)
 
+    time.sleep(start_time)
+
     # Play audio file using appropriate command depending on platform
     if platform.system() == "Windows":
         subprocess.Popen(
@@ -127,20 +134,27 @@ def play_note(note, duration, volume):
         subprocess.Popen(["play", "-q", filename])
 
 
-def play_notes(notes, durations, volume):
+def play_notes(notes, durations, note_start_times):
     """
     Plays multiple notes simultaneously with varying durations and decreasing volume using a thread pool.
     """
     pool = ThreadPool(len(notes))
     for i in range(len(notes)):
-        pool.apply_async(play_note, (notes[i], durations[i], volume - (i / len(notes))))
+        pool.apply_async(
+            play_note,
+            (
+                notes[i],
+                durations[i],
+                1 - (i / len(notes)),
+                durations[i],
+                note_start_times[i],
+            ),
+        )
     pool.close()
     pool.join()
 
-notes = ["F#4", "C#5", "F#5", "C#6", "F#6", "A#6"]
-durations = [0.20, 0.16, 0.16, 0.20, 0.20, 0.40]
 
-play_notes(notes, durations, 1)
+play_notes(*sound_tracks["macos_startup"])
 
 
 def checkLangFile(*args):
@@ -568,7 +582,6 @@ thread_limit = cfg["v2en"]["thread"]["limit"]
 table_name = cfg["sqlite"]["table_name"]
 trans_timeout = cfg["v2en"]["trans_timeout"]
 trans_dict = server.TranslatorsServer().translators_dict
-sound_tracks = {'macos_startup': [["F#2", "C#3", "F#3", "C#4", "F#4", "A#4"], [5/3]*6]}
 
 # logger init
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s\n%(message)s")
