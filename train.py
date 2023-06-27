@@ -11,6 +11,7 @@ conn = getSQLCursor(cfg["sqlite"]["path"])
 cfg = cfg["training"]
 val_cache_path = cfg["val_cache_path"]
 model_shape_path = cfg["model_shape_path"]
+os.makedirs("models", exist_ok=True)
 checkpoint_path = cfg["checkpoint_path"]
 learning_rate = cfg["learning_rate"]
 in_develop = False
@@ -116,6 +117,7 @@ callbacks = [
     reducelr,
 ]
 
+batch_size = int(tmp_x.shape[0] / 50)
 try:
     if in_develop:
         exit(0)
@@ -125,12 +127,12 @@ try:
     history = rnn_model.fit(
         tmp_x,
         second_preproc_sentences,
-        batch_size=256,
+        batch_size=batch_size,
         epochs=50,
         validation_split=0.2,
         callbacks=callbacks,
     )
-
+    os.makedirs("logs", exist_ok=True)
     np.savetxt(
         f"./logs/{datetime.now().strftime('%d.%m.%Y %H-%M-%S')}.txt",
         np.array(history.history["accuracy"]),
@@ -140,6 +142,7 @@ except Exception as e:
     print(e)
     exit(0)
 
+os.makedirs("cache", exist_ok=True)
 with open(val_cache_path, "wb") as f:
     pickle.dump([second_tokenizer, first_tokenizer, second_preproc_sentences], f)
 with open(model_shape_path, "wb") as f:

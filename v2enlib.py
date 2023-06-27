@@ -67,7 +67,7 @@ def isEmpty(path):
 
 def convert(x: str) -> str:
     # fix bad data
-    if "apos" in x or "quot" in x or "amp" in x or not x:
+    if "apos" in x or "quot" in x or "amp" in x or "&#91;" in x or not x:
         return ""
 
     x = x.replace("“", " “ ").replace("”", " ” ").replace("’", " ’ ")
@@ -113,13 +113,13 @@ def play_note(note, duration, volume, note_duration, start_time):
     scaled /= np.max(np.abs(scaled))
 
     # Compute hash of audio data
-    hash = hashlib.sha256(scaled).hexdigest()
+    hashname = hashlib.sha256(scaled).hexdigest()
 
     # Create subdirectory for stored audio files
     os.makedirs(".wav", exist_ok=True)
 
     # Check if file with the same hash already exists
-    filename = os.path.join(".wav", f"{hash}.wav")
+    filename = os.path.join(".wav", f"{hashname[:10]}.wav")
     if not os.path.exists(filename):
         # Write scaled audio data to file
         sf.write(filename, scaled, sr)
@@ -326,20 +326,24 @@ def translatorsTransSub(cmd: list):
     @function_timeout(timeout * 3 / 2 + 5)
     def execute(cmd: list):
         ou = ""
+        allow_error = (
+            requests.exceptions.JSONDecodeError,
+            TransServer.TranslatorError,
+            requests.exceptions.HTTPError,
+        )
         if timeout:
             del cmd[2]["timeout"]
         if cmd[0]:
             try:
                 ou = func_timeout(timeout, cmd[0], *cmd[1], **cmd[2])
             except TransServer.TranslatorError as e:
-                with contextlib.suppress(ValueError):
+                with contextlib.suppress(*allow_error):
                     if tcmd := _extracted_from_translatorsTrans_13(cmd[2].values(), e):
                         ou = func_timeout(timeout / 2, cmd[0], *tcmd)
-            except (
-                requests.exceptions.JSONDecodeError,
-                TransServer.TranslatorError,
-            ):
-                pass
+                    else:
+                        ou = func_timeout(timeout / 2, deepTransGoogle, *cmd)
+            except allow_error:
+                ou = func_timeout(timeout / 2, deepTransGoogle, *cmd)
             except Exception as e:
                 printError("translatorsTransSub", e, False)
         if timeout:
@@ -363,6 +367,7 @@ def translatorsTrans(cmd: list, trans_timeout) -> list:
 
 
 # TODO Rename this here and in `translatorsTrans`
+@measure
 def _extracted_from_translatorsTrans_13(cmd: list, e) -> list:
     try:
         tcmd, execute = list(cmd), False
@@ -381,7 +386,7 @@ def _extracted_from_translatorsTrans_13(cmd: list, e) -> list:
             return tcmd
     except Exception as e:
         printError("change format language", e, False)
-    raise ValueError('Translator error')
+    return []
 
 
 @measure
@@ -651,6 +656,8 @@ trans_dict = TransServer.TranslatorsServer().translators_dict
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s\n%(message)s")
 logger = logging.getLogger("v2en")
 logger.setLevel(logging.WARN)
+os.makedirs(".wav", exist_ok=True)
+
 file_handler = logging.FileHandler(f"./logs/{target}.log")
 file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(formatter)
