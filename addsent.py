@@ -122,8 +122,6 @@ if __name__ == "__main__":
                 True
             ), second_file.read().splitlines(True)
     if safe_execute:
-        pass
-    else:
         safeExecute(saveIN, saveOU)
 
 play_notes(*sound_tracks["windows7_shutdown"])

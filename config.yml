@@ -11,7 +11,7 @@ v2en:
         allow: true
         limit: 0
     trans_timeout: 8
-    safe_execute: false
+    safe_execute: true
 training:
     learning_rate: 1
     initial_sparsity: 0.0

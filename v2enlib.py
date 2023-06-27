@@ -7,7 +7,7 @@ from multiprocess.pool import ThreadPool
 from multiprocess.context import TimeoutError as TLE
 from tabulate import tabulate
 from tqdm import tqdm
-from translators import server
+from translators import server as TransServer
 from functools import lru_cache
 
 # pre define
@@ -204,7 +204,7 @@ def function_timeout(s):
 def func_timeout(timeout, func, *args, **kargs):
     @function_timeout(timeout)
     def execute(func, *args, **kargs):
-        return func(*args, **kargs)
+        return func(*args, **kargs) if args else func(**kargs)
 
     return execute(func, *args, **kargs)
 
@@ -234,6 +234,8 @@ def terminalWidth():
 
 # thread utils
 def funcPool(func, cmds, executor, isAllowThread=True, strictOrder=False) -> list:
+    if (len(cmds)) == 0:
+        return []
     with executor(
         processes=min(len(cmds), thread_limit if thread_limit > 0 else len(cmds)),
     ) as ex:
@@ -287,7 +289,7 @@ def argsPool(
 
 # debug def
 def printError(text, error, is_exit=True):
-    traceback.print_exc()
+    # traceback.print_exc()
     logger.fatal(
         f"{'_'*50}\n\tExpectation while {text}\n\tError type: {type(error)}\n\t{error}\n{chr(8254)*50}"
     )
@@ -326,20 +328,20 @@ def translatorsTransSub(cmd: list):
         ou = ""
         if timeout:
             del cmd[2]["timeout"]
-        try:
-            if cmd[1]:
+        if cmd[0]:
+            try:
                 ou = func_timeout(timeout, cmd[0], *cmd[1], **cmd[2])
-            else:
-                ou = func_timeout(timeout, cmd[0], **cmd[2])
-        except server.TranslatorError as e:
-            if tcmd := _extracted_from_translatorsTrans_13(cmd[2].values(), e):
-                ou = func_timeout(timeout / 2, cmd[0], *tcmd)
-        except requests.exceptions.JSONDecodeError:
-            pass
-        except KeyError:
-            pass
-        except Exception as e:
-            printError("translatorsTransSub", e, False)
+            except TransServer.TranslatorError as e:
+                with contextlib.suppress(ValueError):
+                    if tcmd := _extracted_from_translatorsTrans_13(cmd[2].values(), e):
+                        ou = func_timeout(timeout / 2, cmd[0], *tcmd)
+            except (
+                requests.exceptions.JSONDecodeError,
+                TransServer.TranslatorError,
+            ):
+                pass
+            except Exception as e:
+                printError("translatorsTransSub", e, False)
         if timeout:
             cmd[2]["timeout"] = timeout
         return [ou, trans_name] if ou else ["", trans_name]
@@ -349,19 +351,15 @@ def translatorsTransSub(cmd: list):
 
 @measure
 def translatorsTrans(cmd: list, trans_timeout) -> list:
-    try:
-        return argsPool(
-            trans_dict.values(),  # type: ignore
-            ThreadPool,
-            translatorsTransSub,
-            query_text=cmd[0],
-            from_language=cmd[1],
-            to_language=cmd[2],
-            timeout=trans_timeout,
-        )
-    except Exception as e:
-        printError("translatorsTrans", e, False)
-    return []
+    return argsPool(
+        trans_dict.values(),  # type: ignore
+        ThreadPool,
+        translatorsTransSub,
+        query_text=cmd[0],
+        from_language=cmd[1],
+        to_language=cmd[2],
+        timeout=trans_timeout,
+    )
 
 
 # TODO Rename this here and in `translatorsTrans`
@@ -379,10 +377,11 @@ def _extracted_from_translatorsTrans_13(cmd: list, e) -> list:
         if (e.args[0]).find("vi-VN") != -1:
             tcmd[2 if (e.args[0]).find("to_language") != -1 else 1] = "vi-VN"
             execute = True
-        return tcmd if execute else [""] * len(cmd)
+        if execute:
+            return tcmd
     except Exception as e:
         printError("change format language", e, False)
-    return [""] * len(cmd)
+    raise ValueError('Translator error')
 
 
 @measure
@@ -646,7 +645,7 @@ pruning_params = {
         end_step=end_step,
     ),
 }
-trans_dict = server.TranslatorsServer().translators_dict
+trans_dict = TransServer.TranslatorsServer().translators_dict
 
 # logger init
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s\n%(message)s")
