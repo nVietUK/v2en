@@ -11,10 +11,13 @@ v2en:
         allow: true
         limit: 0
     trans_timeout: 8
+    safe_execute: false
 training:
-    model_path: ./models/model.keras
     learning_rate: 0.01
     initial_sparsity: 0.0
     final_sparsity: 0.9
     begin_step: 1
     end_step: 1000
+    val_cache_path: ./cache/var.pkl
+    model_shape_path: ./cache/shape.pkl
+    checkpoint_path: ./models/best.ckpt

@@ -8,8 +8,12 @@ num_sent = cfg["v2en"]["num_sent"]
 first_lang = target[:2]
 second_lang = target[-2:]
 table_name = cfg["sqlite"]["table_name"]
-first_dictionary_path = f"./cache/{first_lang}.dic"
-second_dictionary_path = f"./cache/{second_lang}.dic"
+safe_execute = cfg["v2en"]["safe_execute"]
+first_dictionary_path, second_dictionary_path = (
+    f"./cache/{first_lang}.dic",
+    f"./cache/{second_lang}.dic",
+)
+first_path, second_path = f"./data/{first_lang}.txt", f"./data/{second_lang}.txt"
 main_execute = True
 false_allow = num_sent / 2 * 3
 
@@ -28,7 +32,7 @@ from v2enlib import (
     play_notes,
     InputSent,
     logger,
-    sound_tracks
+    sound_tracks,
 )
 
 
@@ -39,22 +43,8 @@ def signalHandler(sig, frame):
         main_execute = False
 
 
-if __name__ == "__main__":
-    checkLangFile(first_lang, second_lang)
-    first_dictionary = loadDictionary(first_dictionary_path)
-    second_dictionary = loadDictionary(second_dictionary_path)
-    signal.signal(signal.SIGINT, signalHandler)
-    sql_connection = getSQLCursor(cfg["sqlite"]["path"])
-    createSQLtable(sql_connection, table_name)
+def safeExecute(saveIN, saveOU):
     false_count, first_dump_sents, second_dump_sents = 0, [], []
-
-    first_path, second_path = f"./data/{first_lang}.txt", f"./data/{second_lang}.txt"
-    with open(first_path, "r") as first_file:
-        with open(second_path, "r") as second_file:
-            saveIN, saveOU = first_file.read().splitlines(
-                True
-            ), second_file.read().splitlines(True)
-    play_notes(*sound_tracks['macos_startup'])
     while main_execute:
         time_start = time.time()
         if isEmpty(first_path) or isEmpty(second_path):
@@ -66,7 +56,11 @@ if __name__ == "__main__":
         for e in funcPool(
             addSentExecutor,
             [
-                [InputSent(saveIN[idx], saveOU[idx]), first_dictionary, second_dictionary]
+                [
+                    InputSent(saveIN[idx], saveOU[idx]),
+                    first_dictionary,
+                    second_dictionary,
+                ]
                 for idx in range(num_sent if len(saveIN) > num_sent else len(saveIN))
             ],
             Pool,
@@ -111,4 +105,25 @@ if __name__ == "__main__":
     with open(f"./data/{second_lang}.dump", "a") as f:
         for sent in second_dump_sents:
             f.write(f"{sent}\n")
+
+
+play_notes(*sound_tracks["macos_startup"])
+if __name__ == "__main__":
+    checkLangFile(first_lang, second_lang)
+    first_dictionary = loadDictionary(first_dictionary_path)
+    second_dictionary = loadDictionary(second_dictionary_path)
+    signal.signal(signal.SIGINT, signalHandler)
+    sql_connection = getSQLCursor(cfg["sqlite"]["path"])
+    createSQLtable(sql_connection, table_name)
+
+    with open(first_path, "r") as first_file:
+        with open(second_path, "r") as second_file:
+            saveIN, saveOU = first_file.read().splitlines(
+                True
+            ), second_file.read().splitlines(True)
+    if safe_execute:
+        pass
+    else:
+        safeExecute(saveIN, saveOU)
+
 play_notes(*sound_tracks["windows7_shutdown"])

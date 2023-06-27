@@ -1,4 +1,4 @@
-import contextlib
+import contextlib, tensorflow as tf, tensorflow_model_optimization as tfmot
 import os, string, httpx, sqlite3, resource, time, yaml, logging, librosa, string, gc
 import deep_translator.exceptions, langcodes, requests, traceback, platform, numpy as np
 import hashlib, subprocess, soundfile as sf, scipy
@@ -379,10 +379,10 @@ def _extracted_from_translatorsTrans_13(cmd: list, e) -> list:
         if (e.args[0]).find("vi-VN") != -1:
             tcmd[2 if (e.args[0]).find("to_language") != -1 else 1] = "vi-VN"
             execute = True
-        return tcmd if execute else None
+        return tcmd if execute else [""] * len(cmd)
     except Exception as e:
         printError("change format language", e, False)
-    return ['', '', '']
+    return [""] * len(cmd)
 
 
 @measure
@@ -573,6 +573,52 @@ def getSQL(conn, request):
     return cursor.fetchall()
 
 
+# model training
+def language_model(
+    input_shape, output_sequence_length, input_vocab_size, output_vocab_size
+):
+    """
+    Build and train a RNN model using word embedding on x and y
+    :param input_shape: Tuple of input shape
+    :param output_sequence_length: Length of output sequence
+    :param input_vocab_size: Number of unique input words in the dataset
+    :param output_vocab_size: Number of unique output words in the dataset
+    :return: Keras model built, but not trained
+    """
+    # Config Hyperparameters
+    latent_dim = 128
+
+    # Config Model
+    inputs = tf.keras.layers.Input(shape=input_shape[1:])
+    embedding_layer = tf.keras.layers.Embedding(
+        input_dim=input_vocab_size, output_dim=output_sequence_length, mask_zero=False
+    )(inputs)
+    bd_layer = tf.keras.layers.Bidirectional(
+        tf.keras.layers.GRU(output_sequence_length)
+    )(embedding_layer)
+    encoding_layer = tfmot.sparsity.keras.prune_low_magnitude(
+        tf.keras.layers.Dense(latent_dim, activation="relu"), **pruning_params  # type: ignore
+    )(bd_layer)
+    decoding_layer = tf.keras.layers.RepeatVector(output_sequence_length)(
+        encoding_layer
+    )
+    output_layer = tf.keras.layers.Bidirectional(
+        tf.keras.layers.GRU(latent_dim, return_sequences=True)
+    )(decoding_layer)
+    outputs = tf.keras.layers.TimeDistributed(
+        tf.keras.layers.Dense(output_vocab_size, activation="softmax"),
+    )(output_layer)
+
+    model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
+    model.compile(
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+        optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
+        metrics=["accuracy", "sparse_categorical_accuracy"],
+    )
+
+    return model
+
+
 with open("config.yml", "r") as ymlfile:
     cfg = yaml.safe_load(ymlfile)
 target = cfg["v2en"]["target"]
@@ -585,6 +631,19 @@ thread_alow = cfg["v2en"]["thread"]["allow"]
 thread_limit = cfg["v2en"]["thread"]["limit"]
 table_name = cfg["sqlite"]["table_name"]
 trans_timeout = cfg["v2en"]["trans_timeout"]
+initial_sparsity = cfg["training"]["initial_sparsity"]
+final_sparsity = cfg["training"]["final_sparsity"]
+begin_step = cfg["training"]["begin_step"]
+end_step = cfg["training"]["end_step"]
+learning_rate = cfg["training"]["learning_rate"]
+pruning_params = {
+    "pruning_schedule": tfmot.sparsity.keras.PolynomialDecay(
+        initial_sparsity=initial_sparsity,
+        final_sparsity=final_sparsity,
+        begin_step=begin_step,
+        end_step=end_step,
+    ),
+}
 trans_dict = server.TranslatorsServer().translators_dict
 
 # logger init

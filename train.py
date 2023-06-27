@@ -1,20 +1,7 @@
 import numpy as np
-from keras.preprocessing.text import Tokenizer
-from keras.utils import pad_sequences
-from keras.models import Model
-from keras.layers import (
-    GRU,
-    Input,
-    Dense,
-    TimeDistributed,
-    RepeatVector,
-    Bidirectional,
-    Embedding,
-)
-from keras.optimizers import Adam
 import tensorflow as tf, pickle, yaml, os
 from datetime import datetime
-from v2enlib import getSQLCursor, getSQL, cleanScreen
+from v2enlib import getSQLCursor, getSQL, cleanScreen, language_model
 import tensorflow_model_optimization as tfmot
 
 with open("config.yml", "r") as f:
@@ -22,21 +9,11 @@ with open("config.yml", "r") as f:
 table_name = cfg["sqlite"]["table_name"]
 conn = getSQLCursor(cfg["sqlite"]["path"])
 cfg = cfg["training"]
-model_path = cfg["model_path"]
+val_cache_path = cfg["val_cache_path"]
+model_shape_path = cfg["model_shape_path"]
+checkpoint_path = cfg["checkpoint_path"]
 learning_rate = cfg["learning_rate"]
-initial_sparsity = cfg["initial_sparsity"]
-final_sparsity = cfg["final_sparsity"]
-begin_step = cfg["begin_step"]
-end_step = cfg["end_step"]
 in_develop = False
-pruning_params = {
-    "pruning_schedule": tfmot.sparsity.keras.PolynomialDecay(
-        initial_sparsity=initial_sparsity,
-        final_sparsity=final_sparsity,
-        begin_step=begin_step,
-        end_step=end_step,
-    ),
-}
 
 
 # check if gpu avaliable
@@ -61,13 +38,13 @@ os.environ["TF_GPU_ALLOCATOR"] = "cuda_malloc_async"
 
 
 def tokenize(x):
-    tokenizer = Tokenizer(filters="", lower=False)
+    tokenizer = tf.keras.preprocessing.text.Tokenizer(filters="", lower=False)
     tokenizer.fit_on_texts(x)
     return tokenizer.texts_to_sequences(x), tokenizer
 
 
 def pad(x, length=None):
-    return pad_sequences(x, maxlen=length, padding="post")
+    return tf.keras.utils.pad_sequences(x, maxlen=length, padding="post")
 
 
 def preprocess(x, y):
@@ -88,45 +65,6 @@ def preprocess(x, y):
     return preprocess_x, preprocess_y, x_tk, y_tk
 
 
-def embed_model(
-    input_shape, output_sequence_length, input_vocab_size, output_vocab_size
-):
-    """
-    Build and train a RNN model using word embedding on x and y
-    :param input_shape: Tuple of input shape
-    :param output_sequence_length: Length of output sequence
-    :param input_vocab_size: Number of unique input words in the dataset
-    :param output_vocab_size: Number of unique output words in the dataset
-    :return: Keras model built, but not trained
-    """
-    # Config Hyperparameters
-    latent_dim = 128
-
-    # Config Model
-    inputs = Input(shape=input_shape[1:])
-    embedding_layer = Embedding(
-        input_dim=input_vocab_size, output_dim=output_sequence_length, mask_zero=False
-    )(inputs)
-    bd_layer = Bidirectional(GRU(output_sequence_length))(embedding_layer)
-    encoding_layer = tfmot.sparsity.keras.prune_low_magnitude(
-        Dense(latent_dim, activation="relu"), **pruning_params  # type: ignore
-    )(bd_layer)
-    decoding_layer = RepeatVector(output_sequence_length)(encoding_layer)
-    output_layer = Bidirectional(GRU(latent_dim, return_sequences=True))(decoding_layer)
-    outputs = TimeDistributed(
-        Dense(output_vocab_size, activation="softmax"),
-    )(output_layer)
-
-    model = Model(inputs=inputs, outputs=outputs)
-    model.compile(
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-        optimizer=Adam(learning_rate=learning_rate),
-        metrics=["accuracy", "sparse_categorical_accuracy"],
-    )
-
-    return model
-
-
 first_sent, second_sent = [], []
 for e in getSQL(conn, f"SELECT * FROM {table_name}"):
     if e[2]:
@@ -144,7 +82,7 @@ for e in getSQL(conn, f"SELECT * FROM {table_name}"):
 tmp_x = pad(first_preproc_sentences, second_preproc_sentences.shape[1])
 tmp_x = tmp_x.reshape((-1, second_preproc_sentences.shape[-2]))
 
-rnn_model = embed_model(
+rnn_model = language_model(
     tmp_x.shape,
     second_preproc_sentences.shape[1],
     len(first_tokenizer.word_index) + 1,
@@ -153,7 +91,12 @@ rnn_model = embed_model(
 
 # Prunning model feature
 checkpoint = tf.keras.callbacks.ModelCheckpoint(
-    model_path, save_best_only=True, save_weights_only=True, verbose=1
+    checkpoint_path,
+    save_best_only=True,
+    save_weights_only=True,
+    verbose=1,
+    monitor="val_loss",
+    mode="min",
 )
 earlystop_accuracy = tf.keras.callbacks.EarlyStopping(
     monitor="val_accuracy", patience=5, verbose=1, mode="max"
@@ -162,7 +105,7 @@ earlystop_loss = tf.keras.callbacks.EarlyStopping(
     monitor="val_loss", patience=5, verbose=1, mode="min"
 )
 reducelr = tf.keras.callbacks.ReduceLROnPlateau(
-    monitor="val_loss", factor=0.2, patience=2, min_lr=learning_rate/10, verbose=1
+    monitor="val_loss", factor=0.2, patience=2, min_lr=learning_rate / 10, verbose=1
 )
 update_pruning = tfmot.sparsity.keras.UpdatePruningStep()
 callbacks = [
@@ -186,7 +129,6 @@ try:
         epochs=10,
         validation_split=0.2,
         callbacks=callbacks,
-        verbose=1,
     )
 
     np.savetxt(
@@ -198,6 +140,15 @@ except Exception as e:
     print(e)
     exit(0)
 
-val_cache_path = "./cache/var.pkl"
 with open(val_cache_path, "wb") as f:
     pickle.dump([second_tokenizer, first_tokenizer, second_preproc_sentences], f)
+with open(model_shape_path, "wb") as f:
+    pickle.dump(
+        [
+            tmp_x.shape,
+            second_preproc_sentences.shape[1],
+            len(first_tokenizer.word_index) + 1,
+            len(second_tokenizer.word_index) + 1,
+        ],
+        f,
+    )
