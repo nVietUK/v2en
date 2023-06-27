@@ -105,7 +105,7 @@ earlystop_loss = tf.keras.callbacks.EarlyStopping(
     monitor="val_loss", patience=5, verbose=1, mode="min"
 )
 reducelr = tf.keras.callbacks.ReduceLROnPlateau(
-    monitor="val_loss", factor=0.2, patience=2, min_lr=learning_rate / 10, verbose=1
+    monitor="val_loss", factor=0.2, patience=2, min_lr=learning_rate / 1000, verbose=1
 )
 update_pruning = tfmot.sparsity.keras.UpdatePruningStep()
 callbacks = [
@@ -125,8 +125,8 @@ try:
     history = rnn_model.fit(
         tmp_x,
         second_preproc_sentences,
-        batch_size=128,
-        epochs=10,
+        batch_size=512,
+        epochs=50,
         validation_split=0.2,
         callbacks=callbacks,
     )

@@ -13,7 +13,7 @@ v2en:
     trans_timeout: 8
     safe_execute: false
 training:
-    learning_rate: 0.01
+    learning_rate: 1
     initial_sparsity: 0.0
     final_sparsity: 0.9
     begin_step: 1

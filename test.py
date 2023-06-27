@@ -51,7 +51,6 @@ def final_predictions(text):
         [sentence], maxlen=preproc_output_sentences.shape[-2], padding="post"
     )
 
-    print(sentence.shape)
     print(logits_to_text(rnn_model.predict(sentence[:1])[0], output_tokenizer))
 
 
