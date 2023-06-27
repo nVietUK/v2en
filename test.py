@@ -1,9 +1,5 @@
-import re, pickle
-import tensorflow as tf
-import numpy as np
+import yaml, tensorflow_model_optimization as tfmot, numpy as np, tensorflow as tf, re, pickle
 from keras.utils import pad_sequences
-import yaml
-from tensorflow_model_optimization.sparsity import keras as sparsity
 
 with open("config.yml", "r") as f:
     cfg = yaml.safe_load(f)
@@ -12,7 +8,7 @@ val_cache_path = "./cache/var.pkl"
 model_path = "./models/model.keras"
 
 try:
-    rnn_model = sparsity.strip_pruning(tf.keras.saving.load_model(model_path))
+    rnn_model = tfmot.sparsity.keras.strip_pruning(tf.keras.models.load_model(model_path))
     print("model loaded")
     with open(val_cache_path, "rb") as f:
         output_tokenizer, input_tokenizer, preproc_output_sentences = pickle.load(f)

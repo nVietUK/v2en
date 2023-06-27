@@ -16,17 +16,18 @@ import tensorflow as tf, pickle, yaml, os
 from datetime import datetime
 from v2enlib import getSQLCursor, getSQL, cleanScreen
 import tensorflow_model_optimization as tfmot
-from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
 
 with open("config.yml", "r") as f:
     cfg = yaml.safe_load(f)
-target = cfg["v2en"]["target"]
-model_path = "./models/model.keras"
-learning_rate = 0.001
-initial_sparsity = 0.0
-final_sparsity = 0.9
-begin_step = 0
-end_step = 1000
+table_name = cfg["sqlite"]["table_name"]
+conn = getSQLCursor(cfg["sqlite"]["path"])
+cfg = cfg["training"]
+model_path = cfg["model_path"]
+learning_rate = cfg["learning_rate"]
+initial_sparsity = cfg["initial_sparsity"]
+final_sparsity = cfg["final_sparsity"]
+begin_step = cfg["begin_step"]
+end_step = cfg["end_step"]
 in_develop = False
 pruning_params = {
     "pruning_schedule": tfmot.sparsity.keras.PolynomialDecay(
@@ -34,7 +35,7 @@ pruning_params = {
         final_sparsity=final_sparsity,
         begin_step=begin_step,
         end_step=end_step,
-    )
+    ),
 }
 
 
@@ -120,15 +121,11 @@ def embed_model(
     model.compile(
         loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
         optimizer=Adam(learning_rate=learning_rate),
-        metrics=['accuracy', 'sparse_categorical_accuracy'],
+        metrics=["accuracy", "sparse_categorical_accuracy"],
     )
 
     return model
 
-
-# Now loading data
-conn = getSQLCursor(cfg["sqlite"]["path"])
-table_name = cfg["sqlite"]["table_name"]
 
 first_sent, second_sent = [], []
 for e in getSQL(conn, f"SELECT * FROM {table_name}"):
@@ -155,14 +152,26 @@ rnn_model = embed_model(
 )
 
 # Prunning model feature
-checkpoint = ModelCheckpoint(
+checkpoint = tf.keras.callbacks.ModelCheckpoint(
     model_path, save_best_only=True, save_weights_only=True, verbose=1
 )
-earlystop = EarlyStopping(monitor="val_loss", patience=5, verbose=1)
-reducelr = ReduceLROnPlateau(
-    monitor="val_loss", factor=0.2, patience=2, min_lr=learning_rate, verbose=1
+earlystop_accuracy = tf.keras.callbacks.EarlyStopping(
+    monitor="val_accuracy", patience=5, verbose=1, mode="max"
 )
-callbacks = [tfmot.sparsity.keras.UpdatePruningStep(), checkpoint, earlystop, reducelr]
+earlystop_loss = tf.keras.callbacks.EarlyStopping(
+    monitor="val_loss", patience=5, verbose=1, mode="min"
+)
+reducelr = tf.keras.callbacks.ReduceLROnPlateau(
+    monitor="val_loss", factor=0.2, patience=2, min_lr=learning_rate/10, verbose=1
+)
+update_pruning = tfmot.sparsity.keras.UpdatePruningStep()
+callbacks = [
+    update_pruning,
+    checkpoint,
+    earlystop_accuracy,
+    earlystop_loss,
+    reducelr,
+]
 
 try:
     if in_develop:

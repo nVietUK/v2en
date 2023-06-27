@@ -1,13 +1,20 @@
 sqlite:
-  path: ./database.db
-  table_name: Translation
+    path: ./database.db
+    table_name: Translation
 v2en:
-  target: en-vi
-  accept_percentage: 0.65
-  time_allow: 20
-  resource_allow: 1
-  num_sent: 10
-  thread:
-    allow: true
-    limit: 0
-  trans_timeout: 8
+    target: en-vi
+    accept_percentage: 0.65
+    time_allow: 20
+    resource_allow: 1
+    num_sent: 10
+    thread:
+        allow: true
+        limit: 0
+    trans_timeout: 8
+training:
+    model_path: ./models/model.keras
+    learning_rate: 0.01
+    initial_sparsity: 0.0
+    final_sparsity: 0.9
+    begin_step: 1
+    end_step: 1000

@@ -1,3 +1,4 @@
+import contextlib
 import os, string, httpx, sqlite3, resource, time, yaml, logging, librosa, string, gc
 import deep_translator.exceptions, langcodes, requests, traceback, platform, numpy as np
 import hashlib, subprocess, soundfile as sf, scipy
@@ -104,7 +105,7 @@ def play_note(note, duration, volume, note_duration, start_time):
     """
     sr = 44100  # sample rate
     freq = librosa.note_to_hz(note)
-    samples = scipy.signal.sawtooth(
+    samples = scipy.signal.sawtooth(  # type: ignore
         2 * np.pi * np.arange(sr * note_duration) * freq / sr, 0.5
     )
     decay = np.linspace(volume, 0, int(sr * note_duration))
@@ -191,10 +192,8 @@ def function_timeout(s):
             with ThreadPool(processes=1) as pool:
                 result = pool.apply_async(fn, args=args, kwds=kwargs)
                 output = kwargs.get("default_value", None)
-                try:
+                with contextlib.suppress(TLE):
                     output = result.get(timeout=s) if s else result.get()
-                except TLE:
-                    pass
                 return output
 
         return inner
@@ -236,7 +235,7 @@ def terminalWidth():
 # thread utils
 def funcPool(func, cmds, executor, isAllowThread=True, strictOrder=False) -> list:
     with executor(
-        min(len(cmds), thread_limit if thread_limit > 0 else len(cmds)),
+        processes=min(len(cmds), thread_limit if thread_limit > 0 else len(cmds)),
     ) as ex:
         if not thread_alow or not isAllowThread:
             return [func(cmd) for cmd in tqdm(cmds, leave=False)]
@@ -350,19 +349,23 @@ def translatorsTransSub(cmd: list):
 
 @measure
 def translatorsTrans(cmd: list, trans_timeout) -> list:
-    return argsPool(
-        trans_dict.values(),
-        ThreadPool,
-        translatorsTransSub,
-        query_text=cmd[0],
-        from_language=cmd[1],
-        to_language=cmd[2],
-        timeout=trans_timeout,
-    )
+    try:
+        return argsPool(
+            trans_dict.values(),  # type: ignore
+            ThreadPool,
+            translatorsTransSub,
+            query_text=cmd[0],
+            from_language=cmd[1],
+            to_language=cmd[2],
+            timeout=trans_timeout,
+        )
+    except Exception as e:
+        printError("translatorsTrans", e, False)
+    return []
 
 
 # TODO Rename this here and in `translatorsTrans`
-def _extracted_from_translatorsTrans_13(cmd: list, e) -> list | None:
+def _extracted_from_translatorsTrans_13(cmd: list, e) -> list:
     try:
         tcmd, execute = list(cmd), False
         if (e.args[0]).find("vie") != -1:
@@ -377,10 +380,9 @@ def _extracted_from_translatorsTrans_13(cmd: list, e) -> list | None:
             tcmd[2 if (e.args[0]).find("to_language") != -1 else 1] = "vi-VN"
             execute = True
         return tcmd if execute else None
-    except IndexError:
-        return None
     except Exception as e:
         printError("change format language", e, False)
+    return ['', '', '']
 
 
 @measure
@@ -508,7 +510,7 @@ def addSent(input_sent: InputSent, first_dictionary, second_dictionary):
             first_dump_sent, second_dump_sent = input_sent.first, input_sent.second
 
         print_data = [["Data set", input_sent.first, input_sent.second, "N/A"]] + [
-            [e.isFrom, e.first, e.second, e.accurate] for e in trans_data
+            [e.isFrom, e.first, e.second, e.accurate] for e in trans_data if e.isAdd
         ]
         width = int(terminalWidth() / 4)
         logger.log(
