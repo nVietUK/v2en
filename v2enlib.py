@@ -259,7 +259,7 @@ def argsPool(
     **kwargs,
 ) -> list:
     with executor(
-        min(len(funcs), thread_limit if thread_limit > 0 else len(funcs)),
+        processes=min(len(funcs), thread_limit if thread_limit > 0 else len(funcs)),
     ) as ex:
         if not thread_alow or not isAllowThread:
             return [
@@ -287,7 +287,7 @@ def argsPool(
 
 # debug def
 def printError(text, error, is_exit=True):
-    # traceback.print_exc()
+    traceback.print_exc()
     logger.fatal(
         f"{'_'*50}\n\tExpectation while {text}\n\tError type: {type(error)}\n\t{error}\n{chr(8254)*50}"
     )
@@ -587,33 +587,35 @@ def language_model(
     """
     # Config Hyperparameters
     latent_dim = 128
+    layers = tf.keras.layers
 
     # Config Model
-    inputs = tf.keras.layers.Input(shape=input_shape[1:])
-    embedding_layer = tf.keras.layers.Embedding(
-        input_dim=input_vocab_size, output_dim=output_sequence_length, mask_zero=False
+    inputs = layers.Input(shape=input_shape[1:])
+    embedding_layer = layers.Embedding(
+        input_dim=input_vocab_size,
+        output_dim=latent_dim,
+        input_length=input_shape[1],
+        input_shape=input_shape[1:],
     )(inputs)
-    bd_layer = tf.keras.layers.Bidirectional(
-        tf.keras.layers.GRU(output_sequence_length)
-    )(embedding_layer)
-    encoding_layer = tfmot.sparsity.keras.prune_low_magnitude(
-        tf.keras.layers.Dense(latent_dim, activation="relu"), **pruning_params  # type: ignore
-    )(bd_layer)
-    decoding_layer = tf.keras.layers.RepeatVector(output_sequence_length)(
-        encoding_layer
+    bd1_layer = layers.Bidirectional(layers.GRU(latent_dim))(embedding_layer)
+    repeat_vector = layers.RepeatVector(output_sequence_length)(bd1_layer)
+
+    bc2_layer = layers.Bidirectional(layers.GRU(latent_dim, return_sequences=True))(
+        repeat_vector
     )
-    output_layer = tf.keras.layers.Bidirectional(
-        tf.keras.layers.GRU(latent_dim, return_sequences=True)
-    )(decoding_layer)
-    outputs = tf.keras.layers.TimeDistributed(
-        tf.keras.layers.Dense(output_vocab_size, activation="softmax"),
-    )(output_layer)
+    time_distributed = layers.TimeDistributed(
+        layers.Dense(latent_dim * 4, activation="relu")
+    )(bc2_layer)
+    dropout_layer = layers.Dropout(0.5)(time_distributed)
+    outputs = layers.TimeDistributed(
+        layers.Dense(output_vocab_size, activation="softmax"),
+    )(dropout_layer)
 
     model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
     model.compile(
         loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
         optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
-        metrics=["accuracy", "sparse_categorical_accuracy"],
+        metrics=["accuracy"],
     )
 
     return model

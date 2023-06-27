@@ -1,13 +1,13 @@
 import yaml, tensorflow_model_optimization as tfmot, numpy as np, tensorflow as tf, re, pickle
 from keras.utils import pad_sequences
-from v2enlib import language_model
+from v2enlib import language_model, cleanScreen
 
 with open("config.yml", "r") as f:
     cfg = yaml.safe_load(f)
 target = cfg["v2en"]["target"]
 val_cache_path = cfg["training"]["val_cache_path"]
 model_shape_path = cfg["training"]["model_shape_path"]
-checkpoint_path = cfg['training']['checkpoint_path']
+checkpoint_path = cfg["training"]["checkpoint_path"]
 
 try:
     with open(model_shape_path, "rb") as f:
@@ -35,7 +35,7 @@ except Exception as e:
 
 def logits_to_text(logits, tokenizer):
     index_to_words = {id: word for word, id in tokenizer.word_index.items()}
-    index_to_words[0] = "<PAD>"
+    index_to_words[0] = ""
 
     # So basically we are predicting output for a given word and then selecting best answer
     # Then selecting that label we reverse-enumerate the word from id
@@ -54,5 +54,6 @@ def final_predictions(text):
     print(logits_to_text(rnn_model.predict(sentence[:1])[0], output_tokenizer))
 
 
+cleanScreen()
 txt = input(">> ")
 final_predictions(re.sub(r"[^\w]", " ", txt))

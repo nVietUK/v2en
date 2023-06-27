@@ -125,7 +125,7 @@ try:
     history = rnn_model.fit(
         tmp_x,
         second_preproc_sentences,
-        batch_size=512,
+        batch_size=256,
         epochs=50,
         validation_split=0.2,
         callbacks=callbacks,
