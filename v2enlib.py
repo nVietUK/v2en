@@ -331,7 +331,6 @@ def translatorsTransSub(cmd: list):
     function_timeout = cmd[1].get("function_timeout", None)
     trans_name = getKeyByValue(trans_dict, cmd[0])[0]
 
-    @functionTimeoutWrapper(function_timeout * 3 / 2 + 1)
     def execute(cmd: list):
         ou = ""
         allow_error = (
@@ -350,7 +349,7 @@ def translatorsTransSub(cmd: list):
                         ou = functionTimeout(function_timeout / 2, cmd[0], args=tcmd)
                     else:
                         ou = functionTimeout(
-                            function_timeout / 2, deepTransGoogle, kwargs=cmd[1]
+                            function_timeout, deepTransGoogle, kwargs=cmd[1]
                         )
             except allow_error:
                 ou = functionTimeout(
@@ -382,6 +381,8 @@ def translatorsTrans(cmd: list, trans_timeout) -> list:
 @measureFunction
 def _extracted_from_translatorsTrans_13(cmd: list, e) -> list:
     try:
+        if not len(e.args):
+            return []
         tcmd, execute = list(cmd), False
         if (e.args[0]).find("vie") != -1:
             tcmd[2 if (e.args[0]).find("to_language") != -1 else 1] = "vie"
