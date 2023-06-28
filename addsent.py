@@ -24,14 +24,14 @@ from v2enlib import (
     checkLangFile,
     getSQLCursor,
     createSQLtable,
-    isEmpty,
+    emptyFile,
     saveDictionary,
     addSentExecutor,
     createOBJPool,
-    funcPool,
-    play_notes,
+    functionPool,
+    playNotes,
     InputSent,
-    logger,
+    logging,
     sound_tracks,
 )
 
@@ -39,7 +39,7 @@ from v2enlib import (
 def signalHandler(sig, frame):
     global main_execute
     if main_execute:
-        logger.log(101, "\tStop program!")
+        logging.info("\tStop program!")
         main_execute = False
 
 
@@ -47,13 +47,13 @@ def safeExecute(saveIN, saveOU):
     false_count, first_dump_sents, second_dump_sents = 0, [], []
     while main_execute:
         time_start = time.time()
-        if isEmpty(first_path) or isEmpty(second_path):
-            logger.log(101, "Done!")
+        if emptyFile(first_path) or emptyFile(second_path):
+            logging.info("Done!")
             break
 
         first_dump_sent, second_dump_sent, cmds = [], [], []
 
-        for e in funcPool(
+        for e in functionPool(
             addSentExecutor,
             [
                 [
@@ -88,8 +88,7 @@ def safeExecute(saveIN, saveOU):
 
         saveDictionary(first_dictionary_path, first_dictionary)
         saveDictionary(second_dictionary_path, second_dictionary)
-        logger.log(
-            101,
+        logging.info(
             f"\t\t(mainModule) time consume: {(time.time()-time_start):0,.2f}",
         )
         del cmds, first_dump_sent, second_dump_sent
@@ -107,7 +106,7 @@ def safeExecute(saveIN, saveOU):
             f.write(f"{sent}\n")
 
 
-play_notes(*sound_tracks["macos_startup"])
+playNotes(*sound_tracks["macos_startup"])
 if __name__ == "__main__":
     checkLangFile(first_lang, second_lang)
     first_dictionary = loadDictionary(first_dictionary_path)
@@ -124,4 +123,4 @@ if __name__ == "__main__":
     if safe_execute:
         safeExecute(saveIN, saveOU)
 
-play_notes(*sound_tracks["windows7_shutdown"])
+playNotes(*sound_tracks["windows7_shutdown"])

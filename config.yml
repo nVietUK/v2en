@@ -3,19 +3,20 @@ sqlite:
     table_name: Translation
 v2en:
     target: en-vi
-    accept_percentage: 0.65
+    accept_percentage: 0.54
     time_allow: 20
     resource_allow: 1
     num_sent: 10
     thread:
         allow: true
         limit: 0
-    trans_timeout: 8
+    trans_timeout: 10
     safe_execute: true
 training:
-    learning_rate: 1
+    learning_rate: 0.001
     initial_sparsity: 0.0
     final_sparsity: 0.9
+    allow_pruning: true
     begin_step: 1
     end_step: 1000
     val_cache_path: ./cache/var.pkl

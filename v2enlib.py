@@ -57,34 +57,40 @@ def checkSpellingExecutor(cmd):
 
 
 # utils
-def diffratio(x, y):
+def differentRatio(x, y):
     return SequenceMatcher(None, x, y).ratio()
 
 
-def isEmpty(path):
+def emptyFile(path):
     return os.stat(path).st_size == 0
 
 
 def convert(x: str) -> str:
+    if not x:
+        return ""
     # fix bad data
-    if "apos" in x or "quot" in x or "amp" in x or "&#91;" in x or not x:
+    if "apos" in x or "quot" in x or "amp" in x or "&#91;" in x:
         return ""
 
     x = x.replace("“", " “ ").replace("”", " ” ").replace("’", " ’ ")
     for punc in string.punctuation:
         x = x.replace(punc, f" {punc} ")
-    return x.lower().replace("  ", " ").replace("  ", " ")
+    try:
+        return x.lower().replace("  ", " ").replace("  ", " ")
+    except Exception as e:
+        printError(convert.__name__, e, False)
+        return ""
 
 
 @lru_cache(maxsize=1024)
-def get_wiktionary_headers(word: str) -> httpx.Response:
+def getWikitionaryHeaders(word: str) -> httpx.Response:
     return httpx.get(f"https://en.wiktionary.org/wiki/{word}")
 
 
-def isExistOnWiki(word: str, lang: str) -> bool:
+def existOnWiki(word: str, lang: str) -> bool:
     display_name = langcodes.Language.make(language=lang).display_name()
 
-    response = get_wiktionary_headers(word)
+    response = getWikitionaryHeaders(word)
     return (
         f'href="#{display_name}"' in response.headers.get("link", "")
         or f'id="{display_name}"' in response.text
@@ -95,11 +101,11 @@ def cleanScreen() -> None:
     os.system("cls" if os.name == "nt" else "clear")
 
 
-def get_keys_by_value(d, value):
+def getKeyByValue(d, value):
     return [k for k, v in d.items() if v == value]
 
 
-def play_note(note, duration, volume, note_duration, start_time):
+def playNote(note, duration, volume, note_duration, start_time):
     """
     Plays a single note with the given duration and volume using the soundfile library.
     """
@@ -140,14 +146,14 @@ def play_note(note, duration, volume, note_duration, start_time):
         subprocess.Popen(["play", "-q", filename])
 
 
-def play_notes(notes, durations, note_start_times):
+def playNotes(notes, durations, note_start_times):
     """
     Plays multiple notes simultaneously with varying durations and decreasing volume using a thread pool.
     """
     pool = ThreadPool(len(notes))
     for i in range(len(notes)):
         pool.apply_async(
-            play_note,
+            playNote,
             (
                 notes[i],
                 durations[i],
@@ -169,7 +175,7 @@ def checkLangFile(*args):
 
 def loadDictionary(path) -> list:
     try:
-        if os.stat(path).st_size != 0:
+        if not emptyFile(path):
             with open(path, "r") as f:
                 return [word.rstrip("\n") for word in f.read().splitlines(True)]
     except Exception as e:
@@ -186,7 +192,7 @@ def saveDictionary(path, dictionary):
         printError("saveDictionary", e)
 
 
-def function_timeout(s):
+def functionTimeoutWrapper(s):
     def outer(fn):
         def inner(*args, **kwargs):
             with ThreadPool(processes=1) as pool:
@@ -201,15 +207,22 @@ def function_timeout(s):
     return outer
 
 
-def func_timeout(timeout, func, *args, **kargs):
-    @function_timeout(timeout)
-    def execute(func, *args, **kargs):
-        return func(*args, **kargs) if args else func(**kargs)
+def functionTimeout(timeout, func, **kwargs):
+    @functionTimeoutWrapper(timeout)
+    def execute(func, **kwargs):
+        args, kwargs = kwargs.get("args", None), kwargs.get("kwargs", None)
+        return (
+            func(*args, **kwargs)
+            if args and kwargs
+            else func(**kwargs)
+            if kwargs
+            else func(*args)
+        )
 
-    return execute(func, *args, **kargs)
+    return execute(func, **kwargs)
 
 
-def measure(func):
+def measureFunction(func):
     def wrapper(*args, **kwargs):
         start_time = time.monotonic()
         result = func(*args, **kwargs)
@@ -220,7 +233,7 @@ def measure(func):
         if execution_time < time_allow and resource_consumption < resource_allow:
             return result
 
-        logger.warn(
+        logging.warn(
             f"{func.__name__}'s result:\n\tExecution time: {execution_time} seconds\n\tMemory consumption: {resource_consumption} MB"
         )
         return result
@@ -233,7 +246,7 @@ def terminalWidth():
 
 
 # thread utils
-def funcPool(func, cmds, executor, isAllowThread=True, strictOrder=False) -> list:
+def functionPool(func, cmds, executor, isAllowThread=True, strictOrder=False) -> list:
     if (len(cmds)) == 0:
         return []
     with executor(
@@ -257,29 +270,25 @@ def argsPool(
     subexecutor,
     isAllowThread=True,
     strictOrder=False,
-    *args,
     **kwargs,
 ) -> list:
     with executor(
         processes=min(len(funcs), thread_limit if thread_limit > 0 else len(funcs)),
     ) as ex:
         if not thread_alow or not isAllowThread:
-            return [
-                subexecutor([func, args, kwargs]) for func in tqdm(funcs, leave=False)
-            ]
+            return [subexecutor([func, kwargs]) for func in tqdm(funcs, leave=False)]
         with tqdm(total=len(funcs), leave=False) as pbar:
             results = []
-            argsc = [args] * len(funcs)
             kwargsc = [dict(kwargs) for _ in range(len(funcs))]
             for res in (
                 ex.imap(
                     subexecutor,
-                    [[func, argsc[i], kwargsc[i]] for i, func in enumerate(funcs)],
+                    [[func, kwargsc[i]] for i, func in enumerate(funcs)],
                 )
                 if strictOrder
                 else ex.imap_unordered(
                     subexecutor,
-                    [[func, argsc[i], kwargsc[i]] for i, func in enumerate(funcs)],
+                    [[func, kwargsc[i]] for i, func in enumerate(funcs)],
                 )
             ):
                 pbar.update(1)
@@ -290,15 +299,11 @@ def argsPool(
 # debug def
 def printError(text, error, is_exit=True):
     # traceback.print_exc()
-    logger.fatal(
+    logging.fatal(
         f"{'_'*50}\n\tExpectation while {text}\n\tError type: {type(error)}\n\t{error}\n{chr(8254)*50}"
     )
     if is_exit:
         exit(0)
-
-
-def printInfo(name, pid):
-    logger.info(f"Dive into {name} with pid id: {pid}")
 
 
 # translate def
@@ -307,7 +312,10 @@ def deepTransGoogle(query_text: str, from_language: str, to_language: str) -> st
         return deep_translator.GoogleTranslator(
             source=from_language, target=to_language
         ).translate(query_text)
-    except deep_translator.exceptions.LanguageNotSupportedException:
+    except (
+        deep_translator.exceptions.LanguageNotSupportedException,
+        deep_translator.exceptions.InvalidSourceOrTargetLanguage,
+    ):
         return deepTransGoogle(
             query_text,
             str(langcodes.Language.get(from_language)),
@@ -318,12 +326,12 @@ def deepTransGoogle(query_text: str, from_language: str, to_language: str) -> st
         return ""
 
 
-@measure
+@measureFunction
 def translatorsTransSub(cmd: list):
-    timeout = cmd[2].get("timeout", None)
-    trans_name = get_keys_by_value(trans_dict, cmd[0])[0]
+    function_timeout = cmd[1].get("function_timeout", None)
+    trans_name = getKeyByValue(trans_dict, cmd[0])[0]
 
-    @function_timeout(timeout * 3 / 2 + 5)
+    @functionTimeoutWrapper(function_timeout * 3 / 2 + 1)
     def execute(cmd: list):
         ou = ""
         allow_error = (
@@ -331,29 +339,33 @@ def translatorsTransSub(cmd: list):
             TransServer.TranslatorError,
             requests.exceptions.HTTPError,
         )
-        if timeout:
-            del cmd[2]["timeout"]
+        if function_timeout:
+            del cmd[1]["function_timeout"]
         if cmd[0]:
             try:
-                ou = func_timeout(timeout, cmd[0], *cmd[1], **cmd[2])
+                ou = functionTimeout(function_timeout, cmd[0], kwargs=cmd[1])
             except TransServer.TranslatorError as e:
                 with contextlib.suppress(*allow_error):
-                    if tcmd := _extracted_from_translatorsTrans_13(cmd[2].values(), e):
-                        ou = func_timeout(timeout / 2, cmd[0], *tcmd)
+                    if tcmd := _extracted_from_translatorsTrans_13(cmd[1].values(), e):
+                        ou = functionTimeout(function_timeout / 2, cmd[0], args=tcmd)
                     else:
-                        ou = func_timeout(timeout / 2, deepTransGoogle, *cmd)
+                        ou = functionTimeout(
+                            function_timeout / 2, deepTransGoogle, kwargs=cmd[1]
+                        )
             except allow_error:
-                ou = func_timeout(timeout / 2, deepTransGoogle, *cmd)
+                ou = functionTimeout(
+                    function_timeout / 2, deepTransGoogle, kwargs=cmd[1]
+                )
             except Exception as e:
                 printError("translatorsTransSub", e, False)
-        if timeout:
-            cmd[2]["timeout"] = timeout
-        return [ou, trans_name] if ou else ["", trans_name]
+        if function_timeout:
+            cmd[1]["function_timeout"] = function_timeout
+        return [ou, trans_name]
 
     return execute(cmd)
 
 
-@measure
+@measureFunction
 def translatorsTrans(cmd: list, trans_timeout) -> list:
     return argsPool(
         trans_dict.values(),  # type: ignore
@@ -362,12 +374,12 @@ def translatorsTrans(cmd: list, trans_timeout) -> list:
         query_text=cmd[0],
         from_language=cmd[1],
         to_language=cmd[2],
-        timeout=trans_timeout,
+        function_timeout=trans_timeout,
     )
 
 
 # TODO Rename this here and in `translatorsTrans`
-@measure
+@measureFunction
 def _extracted_from_translatorsTrans_13(cmd: list, e) -> list:
     try:
         tcmd, execute = list(cmd), False
@@ -389,9 +401,9 @@ def _extracted_from_translatorsTrans_13(cmd: list, e) -> list:
     return []
 
 
-@measure
+@measureFunction
 def transIntoList(sent, source_lang, target_lang, target_dictionary):
-    return funcPool(
+    return functionPool(
         checkSpellingExecutor,
         [
             [convert(e[0]), target_dictionary, target_lang, e[1]]
@@ -412,11 +424,10 @@ def checkSpelling(text: str, dictionary: list, lang: str, tname: str = ""):
                 word in dictionary
                 or word.isnumeric()
                 or word in string.punctuation
-                or isExistOnWiki(word, lang)
-                or isExistOnWiki(f"{words[idx-1]} {word}", lang)
+                or existOnWiki(word, lang)
+                or existOnWiki(f"{words[idx-1]} {word}", lang)
                 or (
-                    idx + 1 < len(words)
-                    and isExistOnWiki(f"{word} {words[idx+1]}", lang)
+                    idx + 1 < len(words) and existOnWiki(f"{word} {words[idx+1]}", lang)
                 )
             ):
                 outstr += f"{word} "
@@ -436,7 +447,7 @@ def checkSpelling(text: str, dictionary: list, lang: str, tname: str = ""):
     return ["", ""] if tname else ""
 
 
-@measure
+@measureFunction
 def addSent(input_sent: InputSent, first_dictionary, second_dictionary):
     is_agree, first_dump_sent, second_dump_sent, cmds, trans_data = (
         False,
@@ -445,7 +456,7 @@ def addSent(input_sent: InputSent, first_dictionary, second_dictionary):
         [],
         [],
     )
-    input_sent.first, input_sent.second = funcPool(
+    input_sent.first, input_sent.second = functionPool(
         checkSpellingExecutor,
         [
             [convert(input_sent.first.replace("\n", "")), first_dictionary, first_lang],
@@ -459,35 +470,36 @@ def addSent(input_sent: InputSent, first_dictionary, second_dictionary):
         strictOrder=True,
     )
     if input_sent.isValid():
-        is_error = True
-        first_trans, second_trans = funcPool(
-            transIntoListExecutor,
-            [
-                [input_sent.first, first_lang, second_lang, second_dictionary],
-                [input_sent.second, second_lang, first_lang, first_dictionary],
-            ],
-            ThreadPool,
-            strictOrder=True,
-        )
-        trans_data = [
-            InputSent(
-                input_sent.first,
-                first_tran[0],
-                first_tran[1],
-                diffratio(input_sent.second, first_tran[0]),
+        is_error, trans_data = True, []
+        for first_tran, second_tran in zip(
+            *functionPool(
+                transIntoListExecutor,
+                [
+                    [input_sent.first, first_lang, second_lang, second_dictionary],
+                    [input_sent.second, second_lang, first_lang, first_dictionary],
+                ],
+                ThreadPool,
+                strictOrder=True,
             )
-            for first_tran in first_trans
-            if first_tran[0]
-        ] + [
-            InputSent(
-                second_tran[0],
-                input_sent.second,
-                second_tran[1],
-                diffratio(input_sent.first, second_tran[0]),
-            )
-            for second_tran in second_trans
-            if second_tran[0]
-        ]
+        ):
+            if first_tran[0]:
+                trans_data.append(
+                    InputSent(
+                        input_sent.first,
+                        first_tran[0],
+                        first_tran[1],
+                        differentRatio(input_sent.second, first_tran[0]),
+                    )
+                )
+            if second_tran[0]:
+                trans_data.append(
+                    InputSent(
+                        second_tran[0],
+                        input_sent.second,
+                        second_tran[1],
+                        differentRatio(input_sent.first, second_tran[0]),
+                    )
+                )
 
         if any(e.isAdd for e in trans_data):
             is_agree = True
@@ -517,17 +529,17 @@ def addSent(input_sent: InputSent, first_dictionary, second_dictionary):
             [e.isFrom, e.first, e.second, e.accurate] for e in trans_data if e.isAdd
         ]
         width = int(terminalWidth() / 4)
-        logger.log(
-            101,
-            tabulate(
-                tabular_data=print_data,
-                headers=["From", "Source", "Target", "Accuracy?"],
-                tablefmt="fancy_grid",
-                showindex="always",
-                maxcolwidths=[None, None, width, width, 7],
-                floatfmt=(".2f" * 5),
-            ),
-        )
+        if len(print_data) > 5:
+            logging.info(
+                tabulate(
+                    tabular_data=print_data,
+                    headers=["From", "Source", "Target", "Accuracy?"],
+                    tablefmt="fancy_grid",
+                    showindex="always",
+                    maxcolwidths=[None, None, width, width, 7],
+                    floatfmt=(".2f" * 5),
+                ),
+            )
     del trans_data
     gc.collect()
     return first_dump_sent, second_dump_sent, cmds, is_agree
@@ -593,32 +605,31 @@ def language_model(
     latent_dim = 128
     layers = tf.keras.layers
 
-    # Config Model
-    inputs = layers.Input(shape=input_shape[1:])
-    embedding_layer = layers.Embedding(
-        input_dim=input_vocab_size,
-        output_dim=latent_dim,
-        input_length=input_shape[1],
-        input_shape=input_shape[1:],
-    )(inputs)
-    bd1_layer = layers.Bidirectional(layers.GRU(latent_dim))(embedding_layer)
-    repeat_vector = layers.RepeatVector(output_sequence_length)(bd1_layer)
-
-    bc2_layer = layers.Bidirectional(layers.GRU(latent_dim, return_sequences=True))(
-        repeat_vector
+    # Build the layers
+    model = tf.keras.models.Sequential()
+    # Embedding
+    model.add(
+        layers.Embedding(
+            input_vocab_size,
+            latent_dim,
+            input_length=input_shape[1],
+            input_shape=input_shape[1:],
+        )
     )
-    time_distributed = layers.TimeDistributed(
-        layers.Dense(latent_dim * 4, activation="relu")
-    )(bc2_layer)
-    dropout_layer = layers.Dropout(0.5)(time_distributed)
-    outputs = layers.TimeDistributed(
-        layers.Dense(output_vocab_size, activation="softmax"),
-    )(dropout_layer)
+    # Encoder
+    model.add(layers.Bidirectional(layers.GRU(latent_dim)))
+    model.add(layers.RepeatVector(output_sequence_length))
+    # Decoder
+    model.add(layers.Bidirectional(layers.GRU(latent_dim, return_sequences=True)))
+    model.add(layers.TimeDistributed(layers.Dense(latent_dim*4, activation="relu")))
+    model.add(layers.Dropout(0.5))
+    model.add(
+        layers.TimeDistributed(layers.Dense(output_vocab_size, activation="softmax"))
+    )
 
-    model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
     model.compile(
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-        optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+        optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate * 5),
         metrics=["accuracy"],
     )
 
@@ -642,6 +653,7 @@ final_sparsity = cfg["training"]["final_sparsity"]
 begin_step = cfg["training"]["begin_step"]
 end_step = cfg["training"]["end_step"]
 learning_rate = cfg["training"]["learning_rate"]
+allow_pruning = cfg["training"]["allow_pruning"]
 pruning_params = {
     "pruning_schedule": tfmot.sparsity.keras.PolynomialDecay(
         initial_sparsity=initial_sparsity,
@@ -654,16 +666,14 @@ trans_dict = TransServer.TranslatorsServer().translators_dict
 
 # logger init
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s\n%(message)s")
-logger = logging.getLogger("v2en")
-logger.setLevel(logging.WARN)
 os.makedirs(".wav", exist_ok=True)
 
 file_handler = logging.FileHandler(f"./logs/{target}.log")
-file_handler.setLevel(logging.DEBUG)
+file_handler.setLevel(logging.WARN)
 file_handler.setFormatter(formatter)
 
 console_handler = logging.StreamHandler()
-console_handler.setLevel(101)
+console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
-logger.addHandler(console_handler)
+
+logging.basicConfig(level=logging.DEBUG, handlers=[console_handler, file_handler])

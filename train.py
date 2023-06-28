@@ -14,6 +14,7 @@ model_shape_path = cfg["model_shape_path"]
 os.makedirs("models", exist_ok=True)
 checkpoint_path = cfg["checkpoint_path"]
 learning_rate = cfg["learning_rate"]
+allow_pruning = cfg['allow_pruning']
 in_develop = False
 
 
@@ -96,26 +97,24 @@ checkpoint = tf.keras.callbacks.ModelCheckpoint(
     save_best_only=True,
     save_weights_only=True,
     verbose=1,
-    monitor="val_loss",
-    mode="min",
 )
 earlystop_accuracy = tf.keras.callbacks.EarlyStopping(
-    monitor="val_accuracy", patience=5, verbose=1, mode="max"
+    monitor="val_accuracy", patience=20, verbose=1, mode="max"
 )
 earlystop_loss = tf.keras.callbacks.EarlyStopping(
-    monitor="val_loss", patience=5, verbose=1, mode="min"
+    monitor="val_loss", patience=20, verbose=1, mode="min"
 )
 reducelr = tf.keras.callbacks.ReduceLROnPlateau(
-    monitor="val_loss", factor=0.2, patience=2, min_lr=learning_rate / 1000, verbose=1
+    monitor="val_loss", factor=0.2, patience=2, min_lr=learning_rate, verbose=1
 )
 update_pruning = tfmot.sparsity.keras.UpdatePruningStep()
 callbacks = [
-    update_pruning,
     checkpoint,
     earlystop_accuracy,
     earlystop_loss,
-    reducelr,
 ]
+if allow_pruning:
+    callbacks += [update_pruning, reducelr]
 
 batch_size = int(tmp_x.shape[0] / 50)
 try:
