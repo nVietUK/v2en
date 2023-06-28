@@ -44,7 +44,7 @@ def signalHandler(sig, frame):
 
 
 def safeExecute(saveIN, saveOU):
-    false_count, first_dump_sents, second_dump_sents = 0, [], []
+    false_count, first_dump_sents, second_dump_sents, main_execute = 0, [], [], True
     while main_execute:
         time_start = time.time()
         if emptyFile(first_path) or emptyFile(second_path):
@@ -77,14 +77,13 @@ def safeExecute(saveIN, saveOU):
                     Exception("Too many fatal translation!"),
                     False,
                 )
-        #                main_execute = False
+                main_execute = False
         createOBJPool(cmds, sql_connection)
 
-        if main_execute:
-            second_dump_sents += second_dump_sent
-            first_dump_sents += first_dump_sent
-            saveOU = saveOU[num_sent:]
-            saveIN = saveIN[num_sent:]
+        second_dump_sents += second_dump_sent
+        first_dump_sents += first_dump_sent
+        saveOU = saveOU[num_sent:]
+        saveIN = saveIN[num_sent:]
 
         saveDictionary(first_dictionary_path, first_dictionary)
         saveDictionary(second_dictionary_path, second_dictionary)
