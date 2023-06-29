@@ -530,7 +530,7 @@ def addSent(input_sent: InputSent, first_dictionary, second_dictionary):
             [e.isFrom, e.first, e.second, e.accurate] for e in trans_data if e.isAdd
         ]
         width = int(terminalWidth() / 4)
-        if len(print_data) > 5:
+        if len(print_data) < 10:
             logging.info(
                 tabulate(
                     tabular_data=print_data,
@@ -622,7 +622,7 @@ def language_model(
     model.add(layers.RepeatVector(output_sequence_length))
     # Decoder
     model.add(layers.Bidirectional(layers.GRU(latent_dim, return_sequences=True)))
-    model.add(layers.TimeDistributed(layers.Dense(latent_dim*4, activation="relu")))
+    model.add(layers.TimeDistributed(layers.Dense(latent_dim * 4, activation="relu")))
     model.add(layers.Dropout(0.5))
     model.add(
         layers.TimeDistributed(layers.Dense(output_vocab_size, activation="softmax"))
@@ -670,11 +670,7 @@ formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s\n%(message
 os.makedirs(".wav", exist_ok=True)
 
 file_handler = logging.FileHandler(f"./logs/{target}.log")
-file_handler.setLevel(logging.WARN)
+file_handler.setLevel(logging.INFO)
 file_handler.setFormatter(formatter)
 
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-console_handler.setFormatter(formatter)
-
-logging.basicConfig(level=logging.DEBUG, handlers=[console_handler, file_handler])
+logging.basicConfig(level=logging.DEBUG, handlers=[file_handler])

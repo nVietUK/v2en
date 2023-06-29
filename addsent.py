@@ -1,5 +1,8 @@
+import contextlib, tkinter as tk
 import yaml, signal, time, gc
+from multiprocessing import Process
 from multiprocessing.pool import Pool
+from pynput import keyboard
 
 with open("config.yml", "r") as ymlfile:
     cfg = yaml.safe_load(ymlfile)
@@ -31,7 +34,6 @@ from v2enlib import (
     functionPool,
     playNotes,
     InputSent,
-    logging,
     sound_tracks,
 )
 
@@ -39,16 +41,44 @@ from v2enlib import (
 def signalHandler(sig, frame):
     global main_execute
     if main_execute:
-        logging.info("\tStop program!")
+        print("\tStop program!")
         main_execute = False
 
 
+def on_press(key):
+    global main_execute
+    with contextlib.suppress(AttributeError):
+        if key.char == "z" and main_execute:
+            print("\tStop program!")
+            main_execute = False
+
+
+class ExitButton:
+    def __init__(self, func, **kwargs):
+        self.root = tk.Tk()
+        self.root.title("My App")
+
+        self.button = tk.Button(self.root, text="Turn Off", command=self.turn_off)
+        self.button.pack()
+
+        func(**kwargs)
+        self.thread = Process(target=self.root.mainloop)
+        self.thread.start()
+
+    def turn_off(self):
+        global main_execute
+        if main_execute:
+            print("\tStop program!")
+            main_execute = False
+
+
 def safeExecute(saveIN, saveOU):
-    false_count, first_dump_sents, second_dump_sents, main_execute = 0, [], [], True
+    false_count, first_dump_sents, second_dump_sents = 0, [], []
+    global main_execute
     while main_execute:
         time_start = time.time()
         if emptyFile(first_path) or emptyFile(second_path):
-            logging.info("Done!")
+            print("Done!")
             break
 
         first_dump_sent, second_dump_sent, cmds = [], [], []
@@ -87,7 +117,7 @@ def safeExecute(saveIN, saveOU):
 
         saveDictionary(first_dictionary_path, first_dictionary)
         saveDictionary(second_dictionary_path, second_dictionary)
-        logging.info(
+        print(
             f"\t\t(mainModule) time consume: {(time.time()-time_start):0,.2f}",
         )
         del cmds, first_dump_sent, second_dump_sent
@@ -106,6 +136,8 @@ def safeExecute(saveIN, saveOU):
 
 
 playNotes(*sound_tracks["macos_startup"])
+listener = keyboard.Listener(on_press=on_press)
+listener.start()
 if __name__ == "__main__":
     checkLangFile(first_lang, second_lang)
     first_dictionary = loadDictionary(first_dictionary_path)
@@ -120,6 +152,6 @@ if __name__ == "__main__":
                 True
             ), second_file.read().splitlines(True)
     if safe_execute:
-        safeExecute(saveIN, saveOU)
+        ExitButton(safeExecute, saveIN=saveIN, saveOU=saveOU)
 
 playNotes(*sound_tracks["windows7_shutdown"])
