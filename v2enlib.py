@@ -246,15 +246,17 @@ def terminalWidth():
 
 
 # thread utils
-def functionPool(func, cmds, executor, isAllowThread=True, strictOrder=False) -> list:
+def functionPool(
+    func, cmds, executor, isAllowThread=True, strictOrder=False, poolName: str = ""
+) -> list:
     if (len(cmds)) == 0:
         return []
     with executor(
         processes=min(len(cmds), thread_limit if thread_limit > 0 else len(cmds)),
     ) as ex:
         if not thread_alow or not isAllowThread:
-            return [func(cmd) for cmd in tqdm(cmds, leave=False)]
-        with tqdm(total=len(cmds), leave=False) as pbar:
+            return [func(cmd) for cmd in tqdm(cmds, leave=False, desc=poolName)]
+        with tqdm(total=len(cmds), leave=False, desc=poolName) as pbar:
             results = []
             for res in (
                 ex.imap(func, cmds) if strictOrder else ex.imap_unordered(func, cmds)
@@ -268,16 +270,20 @@ def argsPool(
     funcs: list,
     executor,
     subexecutor,
-    isAllowThread=True,
-    strictOrder=False,
+    isAllowThread: bool = True,
+    strictOrder: bool = False,
+    poolName: str = "",
     **kwargs,
 ) -> list:
     with executor(
         processes=min(len(funcs), thread_limit if thread_limit > 0 else len(funcs)),
     ) as ex:
         if not thread_alow or not isAllowThread:
-            return [subexecutor([func, kwargs]) for func in tqdm(funcs, leave=False)]
-        with tqdm(total=len(funcs), leave=False) as pbar:
+            return [
+                subexecutor([func, kwargs])
+                for func in tqdm(funcs, leave=False, desc=poolName)
+            ]
+        with tqdm(total=len(funcs), leave=False, desc=poolName) as pbar:
             results = []
             kwargsc = [dict(kwargs) for _ in range(len(funcs))]
             for res in (
@@ -370,6 +376,7 @@ def translatorsTrans(cmd: list, trans_timeout) -> list:
         trans_dict.values(),  # type: ignore
         ThreadPool,
         translatorsTransSub,
+        poolName="translationPool",
         query_text=cmd[0],
         from_language=cmd[1],
         to_language=cmd[2],
@@ -411,6 +418,7 @@ def transIntoList(sent, source_lang, target_lang, target_dictionary):
             for e in translatorsTrans([sent, source_lang, target_lang], trans_timeout)
         ],
         ThreadPool,
+        poolName="transCheckSpelling",
     )
 
 
@@ -450,12 +458,13 @@ def checkSpelling(text: str, dictionary: list, lang: str, tname: str = ""):
 
 @measureFunction
 def addSent(input_sent: InputSent, first_dictionary, second_dictionary):
-    is_agree, first_dump_sent, second_dump_sent, cmds, trans_data = (
+    is_agree, first_dump_sent, second_dump_sent, cmds, trans_data, print_data = (
         False,
         "",
         "",
         [],
         [],
+        ["Data set", input_sent.first, input_sent.second, "N/A"],
     )
     input_sent.first, input_sent.second = functionPool(
         checkSpellingExecutor,
@@ -469,6 +478,7 @@ def addSent(input_sent: InputSent, first_dictionary, second_dictionary):
         ],
         ThreadPool,
         strictOrder=True,
+        poolName="sentsCheckSpelling",
     )
     if input_sent.isValid():
         is_error, trans_data = True, []
@@ -481,6 +491,7 @@ def addSent(input_sent: InputSent, first_dictionary, second_dictionary):
                 ],
                 ThreadPool,
                 strictOrder=True,
+                poolName="transIntoList",
             )
         ):
             if first_tran[0]:
@@ -526,7 +537,7 @@ def addSent(input_sent: InputSent, first_dictionary, second_dictionary):
         if is_error:
             first_dump_sent, second_dump_sent = input_sent.first, input_sent.second
 
-        print_data = [["Data set", input_sent.first, input_sent.second, "N/A"]] + [
+        print_data += [
             [e.isFrom, e.first, e.second, e.accurate] for e in trans_data if e.isAdd
         ]
         width = int(terminalWidth() / 4)
@@ -543,7 +554,7 @@ def addSent(input_sent: InputSent, first_dictionary, second_dictionary):
             )
     del trans_data
     gc.collect()
-    return first_dump_sent, second_dump_sent, cmds, is_agree
+    return first_dump_sent, second_dump_sent, cmds, is_agree, len(print_data) - 1
 
 
 # sqlite3 defs

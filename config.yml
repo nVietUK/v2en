@@ -4,7 +4,7 @@ sqlite:
 v2en:
     target: en-vi
     accept_percentage: 0.54
-    time_allow: 20
+    time_allow: 30
     resource_allow: 1
     num_sent: 10
     thread:
