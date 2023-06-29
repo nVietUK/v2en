@@ -1,5 +1,5 @@
 import contextlib, tkinter as tk
-import yaml, signal, time, gc
+import yaml, signal, time, gc, os
 from multiprocessing import Process
 from multiprocessing.pool import Pool
 from pynput import keyboard
@@ -49,8 +49,7 @@ def on_press(key):
     global main_execute
     with contextlib.suppress(AttributeError):
         if key.char == "z" and main_execute:
-            print("\tStop program!")
-            main_execute = False
+            os.kill(os.getpid(), signal.SIGINT)
 
 
 class ExitButton:
@@ -77,8 +76,7 @@ class ExitButton:
         self.root.destroy()
         global main_execute
         if main_execute:
-            print("\tStop program!")
-            main_execute = False
+            os.kill(os.getpid(), signal.SIGINT)
 
 
 def safeExecute(saveIN, saveOU):
