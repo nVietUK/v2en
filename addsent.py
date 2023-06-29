@@ -38,7 +38,7 @@ from v2enlib import (
 )
 
 
-def signalHandler(sig, frame):
+def signalHandler():
     global main_execute
     if main_execute:
         print("\tStop program!")
@@ -61,9 +61,9 @@ class ExitButton:
         self.button = tk.Button(self.root, text="Turn Off", command=self.turn_off)
         self.button.pack()
 
-        func(**kwargs)
         self.thread = Process(target=self.root.mainloop)
         self.thread.start()
+        func(**kwargs)
 
     def turn_off(self):
         global main_execute
