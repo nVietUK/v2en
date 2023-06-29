@@ -8,6 +8,7 @@ with open("config.yml", "r") as ymlfile:
     cfg = yaml.safe_load(ymlfile)
 target = cfg["v2en"]["target"]
 num_sent = cfg["v2en"]["num_sent"]
+allow_GUI = cfg['v2en']['allow_GUI']
 first_lang = target[:2]
 second_lang = target[-2:]
 table_name = cfg["sqlite"]["table_name"]
@@ -54,22 +55,22 @@ def on_press(key):
 
 class ExitButton:
     def __init__(self, func, **kwargs):
-        self.root = tk.Tk()
-        self.root.title("My App")
-
-        self.button = tk.Button(self.root, text="Turn Off", command=self.turn_off)
-        self.button.pack()
-
-        self.thread = Process(target=self.run_loop, kwargs={'func': func, 'kwargs': kwargs})
-        self.thread.start()
-        self.root.mainloop()
-        self.thread.join()
+        if allow_GUI:
+            self.root = tk.Tk()
+            self.root.title("My App")
+            self.button = tk.Button(self.root, text="Turn Off", command=self.turn_off)
+            self.button.pack()
+            self.thread = Process(target=self.run_loop, kwargs={'func': func, 'kwargs': kwargs})
+            self.thread.start()
+            self.root.mainloop()
+            self.thread.join()
+        else: 
+            func(**kwargs)
 
     def run_loop(self, func, kwargs):
         func(**kwargs)
 
-        # check if the button is pressed
-        if self.root.winfo_exists():
+        if allow_GUI and self.root.winfo_exists():
             self.root.destroy()
 
     def turn_off(self):
