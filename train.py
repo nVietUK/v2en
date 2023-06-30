@@ -99,13 +99,13 @@ checkpoint = tf.keras.callbacks.ModelCheckpoint(
     verbose=1,
 )
 earlystop_accuracy = tf.keras.callbacks.EarlyStopping(
-    monitor="val_accuracy", patience=20, verbose=1, mode="max"
+    monitor="accuracy", patience=20, verbose=1, mode="max"
 )
 earlystop_loss = tf.keras.callbacks.EarlyStopping(
-    monitor="val_loss", patience=20, verbose=1, mode="min"
+    monitor="loss", patience=20, verbose=1, mode="min"
 )
 reducelr = tf.keras.callbacks.ReduceLROnPlateau(
-    monitor="val_loss", factor=0.2, patience=2, min_lr=learning_rate, verbose=1
+    monitor="loss", factor=0.2, patience=2, min_lr=learning_rate, verbose=1
 )
 update_pruning = tfmot.sparsity.keras.UpdatePruningStep()
 callbacks = [
@@ -116,7 +116,7 @@ callbacks = [
 if allow_pruning:
     callbacks += [update_pruning, reducelr]
 
-batch_size = int(tmp_x.shape[0] / 50)
+batch_size = 256
 try:
     if in_develop:
         exit(0)
