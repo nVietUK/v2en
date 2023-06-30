@@ -13,6 +13,7 @@ v2en:
     trans_timeout: 10
     safe_execute: true
     allow_GUI: false
+    allowFalseTranslation: true
 training:
     learning_rate: 0.001
     initial_sparsity: 0.0

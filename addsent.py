@@ -13,6 +13,7 @@ first_lang = target[:2]
 second_lang = target[-2:]
 table_name = cfg["sqlite"]["table_name"]
 safe_execute = cfg["v2en"]["safe_execute"]
+allowFalseTranslation = cfg['v2en']['allowFalseTranslation']
 first_dictionary_path, second_dictionary_path = (
     f"./cache/{first_lang}.dic",
     f"./cache/{second_lang}.dic",
@@ -177,7 +178,7 @@ def unsafeExecute(saveIN, saveOU):
                 second_dump_sent.append(e[1])
             cmds.extend(i for i in e[2] if i)
             false_count += -false_count if e[3] else 1
-            if false_count > false_allow and main_execute:
+            if false_count > false_allow and main_execute and not allowFalseTranslation:
                 printError(
                     "mainModule",
                     Exception("Too many fatal translation!"),
