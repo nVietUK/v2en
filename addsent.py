@@ -13,7 +13,7 @@ first_lang = target[:2]
 second_lang = target[-2:]
 table_name = cfg["sqlite"]["table_name"]
 safe_execute = cfg["v2en"]["safe_execute"]
-allowFalseTranslation = cfg['v2en']['allowFalseTranslation']
+allowFalseTranslation = cfg["v2en"]["allowFalseTranslation"]
 first_dictionary_path, second_dictionary_path = (
     f"./cache/{first_lang}.dic",
     f"./cache/{second_lang}.dic",
@@ -83,7 +83,21 @@ class ExitButton:
             os.kill(os.getpid(), signal.SIGINT)
 
 
-def safeExecute(saveIN, saveOU):
+def saveFiles(sql_connection, saveIN, saveOU, first_dump_sents, second_dump_sents):
+    sql_connection.commit()
+    with open(first_path, "w") as file:
+        file.writelines(saveIN)
+    with open(second_path, "w") as file:
+        file.writelines(saveOU)
+    with open(f"./data/{first_lang}.dump", "a") as f:
+        for sent in first_dump_sents:
+            f.write(f"{sent}\n")
+    with open(f"./data/{second_lang}.dump", "a") as f:
+        for sent in second_dump_sents:
+            f.write(f"{sent}\n")
+
+
+def safeExecute(saveIN, saveOU, sql_connection, first_dictionary, second_dictionary):
     false_count, first_dump_sents, second_dump_sents = 0, [], []
     global main_execute
     while main_execute:
@@ -114,7 +128,7 @@ def safeExecute(saveIN, saveOU):
             cmds.extend(i for i in e[2] if i)
             false_count += -false_count if e[3] else 1
             numberAddedTrans += e[4]
-            if false_count > false_allow and main_execute:
+            if false_count > false_allow and main_execute and not allowFalseTranslation:
                 printError(
                     "mainModule",
                     Exception("Too many fatal translation!"),
@@ -135,20 +149,10 @@ def safeExecute(saveIN, saveOU):
         )
         del cmds, first_dump_sent, second_dump_sent
         gc.collect()
-    sql_connection.commit()
-    with open(first_path, "w") as file:
-        file.writelines(saveIN)
-    with open(second_path, "w") as file:
-        file.writelines(saveOU)
-    with open(f"./data/{first_lang}.dump", "a") as f:
-        for sent in first_dump_sents:
-            f.write(f"{sent}\n")
-    with open(f"./data/{second_lang}.dump", "a") as f:
-        for sent in second_dump_sents:
-            f.write(f"{sent}\n")
+    saveFiles(sql_connection, saveIN, saveOU, first_dump_sents, second_dump_sents)
 
 
-def unsafeExecute(saveIN, saveOU):
+def unsafeExecute(saveIN, saveOU, sql_connection, first_dictionary, second_dictionary):
     false_count, first_dump_sents, second_dump_sents = 0, [], []
     global main_execute
     while main_execute:
@@ -199,23 +203,13 @@ def unsafeExecute(saveIN, saveOU):
         )
         del cmds, first_dump_sent, second_dump_sent
         gc.collect()
-    sql_connection.commit()
-    with open(first_path, "w") as file:
-        file.writelines(saveIN)
-    with open(second_path, "w") as file:
-        file.writelines(saveOU)
-    with open(f"./data/{first_lang}.dump", "a") as f:
-        for sent in first_dump_sents:
-            f.write(f"{sent}\n")
-    with open(f"./data/{second_lang}.dump", "a") as f:
-        for sent in second_dump_sents:
-            f.write(f"{sent}\n")
+    saveFiles(sql_connection, saveIN, saveOU, first_dump_sents, second_dump_sents)
 
 
-playNotes(*sound_tracks["macos_startup"])
-listener = keyboard.Listener(on_press=on_press)
-listener.start()
-if __name__ == "__main__":
+def main():
+    playNotes(*sound_tracks["macos_startup"])
+    listener = keyboard.Listener(on_press=on_press)
+    listener.start()
     checkLangFile(first_lang, second_lang)
     first_dictionary = loadDictionary(first_dictionary_path)
     second_dictionary = loadDictionary(second_dictionary_path)
@@ -229,6 +223,17 @@ if __name__ == "__main__":
                 True
             ), second_file.read().splitlines(True)
     if safe_execute:
-        ExitButton(safeExecute, saveIN=saveIN, saveOU=saveOU)
+        ExitButton(
+            safeExecute,
+            saveIN=saveIN,
+            saveOU=saveOU,
+            sql_connection=sql_connection,
+            first_dictionary=first_dictionary,
+            second_dictionary=second_dictionary,
+        )
 
-playNotes(*sound_tracks["windows7_shutdown"])
+    playNotes(*sound_tracks["windows7_shutdown"])
+
+
+if __name__ == "__main__":
+    main()
