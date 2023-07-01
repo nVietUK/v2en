@@ -4,6 +4,10 @@ from datetime import datetime
 from v2enlib import utils, ai, SQL
 
 try:
+    """
+    policy = tf.keras.mixed_precision.Policy('mixed_float16')
+    tf.keras.mixed_precision.set_global_policy(policy)
+    """
     with open("config.yml", "r") as f:
         cfg = yaml.safe_load(f)
     table_name = cfg["sqlite"]["table_name"]
@@ -100,27 +104,26 @@ checkpoint = tf.keras.callbacks.ModelCheckpoint(
     save_best_only=True,
     save_weights_only=True,
     verbose=1,
-    monitor='val_accuracy',
-    mode='max'
+    monitor="val_accuracy",
+    mode="max",
 )
 earlystop_accuracy = tf.keras.callbacks.EarlyStopping(
-    monitor="val_accuracy", patience=10, verbose=1, mode="max"
+    monitor="val_accuracy", patience=30, verbose=1, mode="max"
 )
 earlystop_loss = tf.keras.callbacks.EarlyStopping(
-    monitor="val_loss", patience=10, verbose=1, mode="min"
+    monitor="val_loss", patience=30, verbose=1, mode="min"
 )
 update_pruning = tfmot.sparsity.keras.UpdatePruningStep()
 callbacks = [
     checkpoint,
     earlystop_accuracy,
     earlystop_loss,
-    tf.keras.callbacks.TensorBoard(log_dir="./logs"),
-    tf.keras.callbacks.LearningRateScheduler(ai.lr_schedule)
+    tf.keras.callbacks.LearningRateScheduler(ai.lr_schedule),
 ]
 if allow_pruning:
     callbacks += [update_pruning]
 
-batch_size = 450
+batch_size = 2048
 try:
     if in_develop:
         exit(0)
@@ -134,13 +137,7 @@ try:
         epochs=50,
         validation_split=0.2,
         callbacks=callbacks,
-        use_multiprocessing=True
-    )
-    os.makedirs("logs", exist_ok=True)
-    np.savetxt(
-        f"./logs/{datetime.now().strftime('%d.%m.%Y %H-%M-%S')}.txt",
-        np.array(history.history["accuracy"]),
-        delimiter=",",
+        use_multiprocessing=True,
     )
 except Exception as e:
     print(e)
