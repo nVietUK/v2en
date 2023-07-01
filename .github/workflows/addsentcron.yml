@@ -31,5 +31,5 @@ jobs:
             title: Update database
             body: Please check the log file before pull
             base: main
-            branch: bot runner for addsent.py
+            branch: addsent-bot-run
             delete-branch: true
