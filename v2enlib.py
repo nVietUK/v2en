@@ -287,6 +287,7 @@ def argsPool(
     funcs: list,
     executor,
     subexecutor,
+    ignorefargs: bool= False,
     isAllowThread: bool = True,
     strictOrder: bool = False,
     poolName: str = "",
@@ -385,6 +386,7 @@ def translatorsTrans(cmd: list, trans_timeout) -> list:
         trans_dict.values(),  # type: ignore
         ThreadPool,
         translatorsTransSub,
+        True,
         poolName="translationPool",
         query_text=cmd[0],
         from_language=cmd[1],
