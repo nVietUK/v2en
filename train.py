@@ -100,12 +100,14 @@ checkpoint = tf.keras.callbacks.ModelCheckpoint(
     save_best_only=True,
     save_weights_only=True,
     verbose=1,
+    monitor='val_accuracy',
+    mode='max'
 )
 earlystop_accuracy = tf.keras.callbacks.EarlyStopping(
-    monitor="accuracy", patience=10, verbose=1, mode="max"
+    monitor="val_accuracy", patience=10, verbose=1, mode="max"
 )
 earlystop_loss = tf.keras.callbacks.EarlyStopping(
-    monitor="loss", patience=10, verbose=1, mode="min"
+    monitor="val_loss", patience=10, verbose=1, mode="min"
 )
 reducelr = tf.keras.callbacks.ReduceLROnPlateau(
     monitor="val_loss", factor=0.2, patience=2, min_lr=learning_rate, verbose=1
@@ -115,11 +117,13 @@ callbacks = [
     checkpoint,
     earlystop_accuracy,
     earlystop_loss,
+    reducelr,
+    tf.keras.callbacks.TensorBoard(log_dir="./logs")
 ]
 if allow_pruning:
-    callbacks += [update_pruning, reducelr]
+    callbacks += [update_pruning]
 
-batch_size = 409
+batch_size = 512
 try:
     if in_develop:
         exit(0)
@@ -133,6 +137,7 @@ try:
         epochs=50,
         validation_split=0.2,
         callbacks=callbacks,
+        use_multiprocessing=True
     )
     os.makedirs("logs", exist_ok=True)
     np.savetxt(
