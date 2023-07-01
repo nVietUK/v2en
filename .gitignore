@@ -1,7 +1,6 @@
 __pycache__
 config.yml
 /.wav
-/models
 
 # Logs
 logs
