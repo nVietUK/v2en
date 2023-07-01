@@ -108,7 +108,7 @@ earlystop_loss = tf.keras.callbacks.EarlyStopping(
     monitor="loss", patience=10, verbose=1, mode="min"
 )
 reducelr = tf.keras.callbacks.ReduceLROnPlateau(
-    monitor="loss", factor=0.2, patience=2, min_lr=learning_rate, verbose=1
+    monitor="val_loss", factor=0.2, patience=2, min_lr=learning_rate, verbose=1
 )
 update_pruning = tfmot.sparsity.keras.UpdatePruningStep()
 callbacks = [
@@ -119,7 +119,7 @@ callbacks = [
 if allow_pruning:
     callbacks += [update_pruning, reducelr]
 
-batch_size = 256
+batch_size = 409
 try:
     if in_develop:
         exit(0)

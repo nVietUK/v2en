@@ -1,4 +1,5 @@
-import tensorflow as tf, const
+import tensorflow as tf
+from v2enlib import const
 
 def language_model(
     input_shape, output_sequence_length, input_vocab_size, output_vocab_size

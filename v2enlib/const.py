@@ -1,5 +1,4 @@
 import yaml, tensorflow_model_optimization as tfmot
-from v2enlib import utils
 from translators import server as TransServer
 
 try:
@@ -44,5 +43,5 @@ try:
         ],
     }
 except Exception as e:
-    utils.printError("importing config", e, True)
+    print("error while importing config")
     exit()
