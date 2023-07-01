@@ -26,7 +26,7 @@ jobs:
         run: python addsent.py --amount-exe 1 --ci_cd
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v4
+        uses: peter-evans/create-pull-request@v5.0.2
         with:
             commit-message: Update database
             title: Update database
