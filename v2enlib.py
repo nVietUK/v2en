@@ -10,6 +10,15 @@ from tqdm import tqdm
 from translators import server as TransServer
 from functools import lru_cache
 
+
+# debug def
+def printError(text, error, important):
+    text = f"{'_'*50}\n\tExpectation while {text}\n\tError type: {type(error)}\n\t{error}\n{chr(8254)*50}"
+    logging.fatal(text)
+    if important:
+        print(text)
+
+
 # pre define
 sound_tracks = {
     "macos_startup": [["F#2", "C#3", "F#3", "C#4", "F#4", "A#4"], [5 / 3] * 6, [0] * 6],
@@ -179,7 +188,7 @@ def loadDictionary(path) -> list:
             with open(path, "r") as f:
                 return [word.rstrip("\n") for word in f.read().splitlines(True)]
     except Exception as e:
-        printError(loadDictionary.__name__, e)
+        printError(loadDictionary.__name__, e, False)
     return []
 
 
@@ -189,7 +198,7 @@ def saveDictionary(path, dictionary):
             for e in dictionary:
                 f.write(e + "\n")
     except Exception as e:
-        printError("saveDictionary", e)
+        printError("saveDictionary", e, False)
 
 
 def functionTimeoutWrapper(s):
@@ -300,16 +309,6 @@ def argsPool(
                 pbar.update(1)
                 results.append(res)
             return results
-
-
-# debug def
-def printError(text, error, is_exit=True):
-    # traceback.print_exc()
-    logging.fatal(
-        f"{'_'*50}\n\tExpectation while {text}\n\tError type: {type(error)}\n\t{error}\n{chr(8254)*50}"
-    )
-    if is_exit:
-        exit(0)
 
 
 # translate def
@@ -452,7 +451,7 @@ def checkSpelling(text: str, dictionary: list, lang: str, tname: str = ""):
             False,
         )
     except Exception as e:
-        printError(checkSpelling.__name__, e)
+        printError(checkSpelling.__name__, e, False)
     return ["", ""] if tname else ""
 
 
@@ -570,7 +569,7 @@ def createSQLtable(connection, table_name):
         connection.cursor().execute(sql_create_table)
         connection.commit()
     except Exception as e:
-        printError(createSQLtable.__name__, e)
+        printError(createSQLtable.__name__, e, False)
 
 
 def createOBJ(sql, obj, conn):
@@ -578,7 +577,7 @@ def createOBJ(sql, obj, conn):
         if obj[0] and obj[1]:
             conn.cursor().execute(sql, obj)
     except Exception as e:
-        printError(createOBJ.__name__, e)
+        printError(createOBJ.__name__, e, False)
 
 
 def createOBJPool(cmds, conn):
@@ -648,24 +647,28 @@ def language_model(
     return model
 
 
-with open("config.yml", "r") as ymlfile:
-    cfg = yaml.safe_load(ymlfile)
-target = cfg["v2en"]["target"]
-first_lang = target[:2]
-second_lang = target[-2:]
-accept_percentage = cfg["v2en"]["accept_percentage"]
-time_allow = cfg["v2en"]["time_allow"]
-resource_allow = cfg["v2en"]["resource_allow"]
-thread_alow = cfg["v2en"]["thread"]["allow"]
-thread_limit = cfg["v2en"]["thread"]["limit"]
-table_name = cfg["sqlite"]["table_name"]
-trans_timeout = cfg["v2en"]["trans_timeout"]
-initial_sparsity = cfg["training"]["initial_sparsity"]
-final_sparsity = cfg["training"]["final_sparsity"]
-begin_step = cfg["training"]["begin_step"]
-end_step = cfg["training"]["end_step"]
-learning_rate = cfg["training"]["learning_rate"]
-allow_pruning = cfg["training"]["allow_pruning"]
+try:
+    with open("config.yml", "r") as ymlfile:
+        cfg = yaml.safe_load(ymlfile)
+    target = cfg["v2en"]["target"]
+    first_lang = target[:2]
+    second_lang = target[-2:]
+    accept_percentage = cfg["v2en"]["accept_percentage"]
+    time_allow = cfg["v2en"]['allow']["time"]
+    resource_allow = cfg["v2en"]['allow']["resource"]
+    thread_alow = cfg["v2en"]["thread"]["allow"]
+    thread_limit = cfg["v2en"]["thread"]["limit"]
+    table_name = cfg["sqlite"]["table_name"]
+    trans_timeout = cfg["v2en"]["trans_timeout"]
+    initial_sparsity = cfg["training"]["initial_sparsity"]
+    final_sparsity = cfg["training"]["final_sparsity"]
+    begin_step = cfg["training"]["begin_step"]
+    end_step = cfg["training"]["end_step"]
+    learning_rate = cfg["training"]["learning_rate"]
+    allow_pruning = cfg["training"]["allow_pruning"]
+except Exception as e:
+    printError("importing config", e, True)
+    exit()
 pruning_params = {
     "pruning_schedule": tfmot.sparsity.keras.PolynomialDecay(
         initial_sparsity=initial_sparsity,

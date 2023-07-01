@@ -1,13 +1,17 @@
 import yaml, tensorflow_model_optimization as tfmot, numpy as np, tensorflow as tf, re, pickle
 from keras.utils import pad_sequences
-from v2enlib import language_model, cleanScreen
+from v2enlib import language_model, cleanScreen, printError
 
-with open("config.yml", "r") as f:
-    cfg = yaml.safe_load(f)
-target = cfg["v2en"]["target"]
-val_cache_path = cfg["training"]["val_cache_path"]
-model_shape_path = cfg["training"]["model_shape_path"]
-checkpoint_path = cfg["training"]["checkpoint_path"]
+try:
+    with open("config.yml", "r") as f:
+        cfg = yaml.safe_load(f)
+    target = cfg["v2en"]["target"]
+    val_cache_path = cfg["training"]["val_cache_path"]
+    model_shape_path = cfg["training"]["model_shape_path"]
+    checkpoint_path = cfg["training"]["checkpoint_path"]
+except Exception as e:
+    printError("importing config", e, True)
+    exit()
 
 try:
     with open(model_shape_path, "rb") as f:

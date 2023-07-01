@@ -1,20 +1,24 @@
 import numpy as np
 import tensorflow as tf, pickle, yaml, os
 from datetime import datetime
-from v2enlib import getSQLCursor, getSQL, cleanScreen, language_model
+from v2enlib import getSQLCursor, getSQL, cleanScreen, language_model, printError
 import tensorflow_model_optimization as tfmot
 
-with open("config.yml", "r") as f:
-    cfg = yaml.safe_load(f)
-table_name = cfg["sqlite"]["table_name"]
-conn = getSQLCursor(cfg["sqlite"]["path"])
-cfg = cfg["training"]
-val_cache_path = cfg["val_cache_path"]
-model_shape_path = cfg["model_shape_path"]
-os.makedirs("models", exist_ok=True)
-checkpoint_path = cfg["checkpoint_path"]
-learning_rate = cfg["learning_rate"]
-allow_pruning = cfg['allow_pruning']
+try:
+    with open("config.yml", "r") as f:
+        cfg = yaml.safe_load(f)
+    table_name = cfg["sqlite"]["table_name"]
+    conn = getSQLCursor(cfg["sqlite"]["path"])
+    cfg = cfg["training"]
+    val_cache_path = cfg["val_cache_path"]
+    model_shape_path = cfg["model_shape_path"]
+    os.makedirs("models", exist_ok=True)
+    checkpoint_path = cfg["checkpoint_path"]
+    learning_rate = cfg["learning_rate"]
+    allow_pruning = cfg["allow_pruning"]
+except Exception as e:
+    printError("importing config", e, True)
+    exit()
 in_develop = False
 
 
