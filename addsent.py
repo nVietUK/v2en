@@ -232,4 +232,6 @@ if __name__ == "__main__":
         const.thread_alow = False
     if not fargs.ci_cd:
         from pynput import keyboard
+    else:
+        const.disableTQDM = True
     main(fargs)
