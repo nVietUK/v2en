@@ -3,6 +3,7 @@ pyyaml
 translators
 langcodes
 tensorflow-model-optimization
+tensorflow
 language-data
 tabulate
 httpx
