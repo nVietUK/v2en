@@ -25,7 +25,7 @@ jobs:
         if: steps.cache-pip.outputs.cache-hit != 'true'
 
       - name: execute py script # run main.py
-        run: python addsent.py --amount-exe 200 --ci_cd
+        run: python addsent.py --amount-exe 200 --ci_cd --disable-thread
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5.0.2
