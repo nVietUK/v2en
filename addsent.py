@@ -1,4 +1,4 @@
-import contextlib
+import contextlib, v2enlib
 import yaml, signal, time, gc, os, argparse
 from multiprocessing import Process
 from multiprocessing.pool import Pool
@@ -235,7 +235,17 @@ if __name__ == "__main__":
         default=False,
         const=True
     )
+    parser.add_argument(
+        '--disable-thread',
+        type=bool,
+        help='disable thread feature for addsent.py',
+        nargs='?',
+        default=False,
+        const=True
+    )
     fargs = parser.parse_args()
+    if fargs.disable_thread:
+        v2enlib.thread_alow = False
     if not fargs.ci_cd:
         from pynput import keyboard
     main(fargs)

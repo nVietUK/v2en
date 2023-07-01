@@ -18,7 +18,7 @@ jobs:
 
       - uses: actions/cache@v2
         with:
-          path: ~/.cache/pip
+          path: ${{ env.pythonLocation }}
           key: ${{ runner.os }}-${{ hashFiles('requirements.txt') }}
 
       - run: pip install -r requirements.txt

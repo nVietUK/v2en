@@ -103,10 +103,10 @@ checkpoint = tf.keras.callbacks.ModelCheckpoint(
     verbose=1,
 )
 earlystop_accuracy = tf.keras.callbacks.EarlyStopping(
-    monitor="accuracy", patience=20, verbose=1, mode="max"
+    monitor="accuracy", patience=10, verbose=1, mode="max"
 )
 earlystop_loss = tf.keras.callbacks.EarlyStopping(
-    monitor="loss", patience=20, verbose=1, mode="min"
+    monitor="loss", patience=10, verbose=1, mode="min"
 )
 reducelr = tf.keras.callbacks.ReduceLROnPlateau(
     monitor="loss", factor=0.2, patience=2, min_lr=learning_rate, verbose=1
