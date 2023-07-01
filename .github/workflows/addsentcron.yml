@@ -17,21 +17,26 @@ jobs:
           cache: "pip"
 
       - uses: actions/cache@v2
+        id: cache-pip
         with:
           path: ${{ env.pythonLocation }}
           key: ${{ runner.os }}-${{ hashFiles('requirements.txt') }}
 
       - run: pip install -r requirements.txt
+        if: steps.cache-pip.outputs.cache-hit != 'true'
 
       - name: execute py script # run main.py
         run: python addsent.py --amount-exe 10000 --ci_cd --disable-thread
 
-      - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v5.0.2
+      - name: commit files
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add -A
+          git diff-index --quiet HEAD || (git commit -a -m "updated logs" --allow-empty)
+
+      - name: push changes
+        uses: ad-m/github-push-action@v0.6.0
         with:
-          commit-message: Update database
-          title: Update database
-          body: Please check the log file before pull
-          base: main
-          branch: addsent-bot-run
-          delete-branch: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: main 
