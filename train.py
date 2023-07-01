@@ -1,13 +1,8 @@
-import numpy as np, tensorflow_model_optimization as tfmot
+import tensorflow_model_optimization as tfmot
 import tensorflow as tf, pickle, yaml, os
-from datetime import datetime
 from v2enlib import utils, ai, SQL
 
 try:
-    """
-    policy = tf.keras.mixed_precision.Policy('mixed_float16')
-    tf.keras.mixed_precision.set_global_policy(policy)
-    """
     with open("config.yml", "r") as f:
         cfg = yaml.safe_load(f)
     table_name = cfg["sqlite"]["table_name"]
@@ -123,7 +118,7 @@ callbacks = [
 if allow_pruning:
     callbacks += [update_pruning]
 
-batch_size = 2048
+batch_size = 475
 try:
     if in_develop:
         exit(0)
