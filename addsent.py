@@ -2,7 +2,7 @@ import contextlib, v2enlib
 import yaml, signal, time, gc, os, argparse
 from multiprocessing import Process
 from multiprocessing.pool import Pool
-from v2enlib import printError
+from v2enlib import utils, language, SQL, const
 
 try:
     with open("config.yml", "r") as ymlfile:
@@ -18,7 +18,7 @@ try:
     if allow_GUI:
         import tkinter as tk
 except Exception as e:
-    printError("importing config", e, True)
+    utils.printError("importing config", e, True)
     exit(0)
 first_dictionary_path, second_dictionary_path = (
     f"./cache/{first_lang}.dic",
@@ -27,22 +27,6 @@ first_dictionary_path, second_dictionary_path = (
 first_path, second_path = f"./data/{first_lang}.txt", f"./data/{second_lang}.txt"
 main_execute = True
 false_allow = num_sent / 2 * 3
-
-
-from v2enlib import (
-    loadDictionary,
-    checkLangFile,
-    getSQLCursor,
-    createSQLtable,
-    emptyFile,
-    saveDictionary,
-    addSentExecutor,
-    createOBJPool,
-    functionPool,
-    playNotes,
-    InputSent,
-    sound_tracks,
-)
 
 
 def signalHandler(sig, handle):
@@ -100,8 +84,8 @@ def saveFiles(
     second_dictionary,
 ):
     sql_connection.commit()
-    saveDictionary(first_dictionary_path, first_dictionary)
-    saveDictionary(second_dictionary_path, second_dictionary)
+    language.saveDictionary(first_dictionary_path, first_dictionary)
+    language.saveDictionary(second_dictionary_path, second_dictionary)
     with open(first_path, "w") as file:
         file.writelines(saveIN)
     with open(second_path, "w") as file:
@@ -122,17 +106,17 @@ def safeExecute(
     while main_execute:
         exe_count += 1
         time_start = time.time()
-        if emptyFile(first_path) or emptyFile(second_path):
+        if utils.emptyFile(first_path) or utils.emptyFile(second_path):
             print("Done!")
             break
 
         first_dump_sent, second_dump_sent, cmds, numberAddedTrans = [], [], [], 0
 
-        for e in functionPool(
-            addSentExecutor,
+        for e in utils.functionPool(
+            language.addSentExecutor,
             [
                 [
-                    InputSent(saveIN[idx], saveOU[idx]),
+                    language.InputSent(saveIN[idx], saveOU[idx]),
                     first_dictionary,
                     second_dictionary,
                 ]
@@ -153,9 +137,9 @@ def safeExecute(
             false_count += -false_count if e[3] else 1
             numberAddedTrans += e[4]
             if false_count > false_allow and main_execute and not allowFalseTranslation:
-                printError("mainModule", Exception("Too many fatal translation!"), True)
+                utils.printError("mainModule", Exception("Too many fatal translation!"), True)
                 main_execute = False
-        createOBJPool(cmds, sql_connection)
+        SQL.createOBJPool(cmds, sql_connection)
 
         second_dump_sents += second_dump_sent
         first_dump_sents += first_dump_sent
@@ -188,16 +172,16 @@ def unsafeExecute(saveIN, saveOU, sql_connection, first_dictionary, second_dicti
 
 
 def main(fargs):
-    playNotes(*sound_tracks["macos_startup"])
+    utils.playNotes(*const.sound_tracks["macos_startup"])
     if not fargs.ci_cd:
         listener = keyboard.Listener(on_press=on_press)
         listener.start()
-    checkLangFile(first_lang, second_lang)
-    first_dictionary = loadDictionary(first_dictionary_path)
-    second_dictionary = loadDictionary(second_dictionary_path)
+    language.checkLangFile(first_lang, second_lang)
+    first_dictionary = language.loadDictionary(first_dictionary_path)
+    second_dictionary = language.loadDictionary(second_dictionary_path)
     signal.signal(signal.SIGINT, signalHandler)
-    sql_connection = getSQLCursor(cfg["sqlite"]["path"])
-    createSQLtable(sql_connection, table_name)
+    sql_connection = SQL.getSQLCursor(cfg["sqlite"]["path"])
+    SQL.createSQLtable(sql_connection, table_name)
 
     with open(first_path, "r") as first_file:
         with open(second_path, "r") as second_file:
@@ -215,7 +199,7 @@ def main(fargs):
             fargs=fargs,
         )
 
-    playNotes(*sound_tracks["windows7_shutdown"])
+    utils.playNotes(*const.sound_tracks["windows7_shutdown"])
 
 
 if __name__ == "__main__":
@@ -245,7 +229,7 @@ if __name__ == "__main__":
     )
     fargs = parser.parse_args()
     if fargs.disable_thread:
-        v2enlib.thread_alow = False
+        const.thread_alow = False
     if not fargs.ci_cd:
         from pynput import keyboard
     main(fargs)

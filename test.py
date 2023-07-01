@@ -1,6 +1,6 @@
 import yaml, tensorflow_model_optimization as tfmot, numpy as np, tensorflow as tf, re, pickle
 from keras.utils import pad_sequences
-from v2enlib import language_model, cleanScreen, printError
+from v2enlib import ai, utils
 
 try:
     with open("config.yml", "r") as f:
@@ -10,7 +10,7 @@ try:
     model_shape_path = cfg["training"]["model_shape_path"]
     checkpoint_path = cfg["training"]["checkpoint_path"]
 except Exception as e:
-    printError("importing config", e, True)
+    utils.printError("importing config", e, True)
     exit()
 
 try:
@@ -21,7 +21,7 @@ try:
             first_tokenizer_len,
             second_tokenizer_len,
         ) = pickle.load(f)
-    rnn_model = language_model(
+    rnn_model = ai.language_model(
         tmp_x_shape,
         second_preproc_sentences_shape,
         first_tokenizer_len,
@@ -58,6 +58,6 @@ def final_predictions(text):
     print(logits_to_text(rnn_model.predict(sentence[:1])[0], output_tokenizer))
 
 
-cleanScreen()
+utils.cleanScreen()
 txt = input(">> ")
 final_predictions(re.sub(r"[^\w]", " ", txt))

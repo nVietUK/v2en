@@ -1,14 +1,13 @@
-import numpy as np
+import numpy as np, tensorflow_model_optimization as tfmot
 import tensorflow as tf, pickle, yaml, os
 from datetime import datetime
-from v2enlib import getSQLCursor, getSQL, cleanScreen, language_model, printError
-import tensorflow_model_optimization as tfmot
+from v2enlib import utils, ai, SQL
 
 try:
     with open("config.yml", "r") as f:
         cfg = yaml.safe_load(f)
     table_name = cfg["sqlite"]["table_name"]
-    conn = getSQLCursor(cfg["sqlite"]["path"])
+    conn = SQL.getSQLCursor(cfg["sqlite"]["path"])
     cfg = cfg["training"]
     val_cache_path = cfg["val_cache_path"]
     model_shape_path = cfg["model_shape_path"]
@@ -17,7 +16,7 @@ try:
     learning_rate = cfg["learning_rate"]
     allow_pruning = cfg["allow_pruning"]
 except Exception as e:
-    printError("importing config", e, True)
+    utils.printError("importing config", e, True)
     exit()
 in_develop = False
 
@@ -72,7 +71,7 @@ def preprocess(x, y):
 
 
 first_sent, second_sent = [], []
-for e in getSQL(conn, f"SELECT * FROM {table_name}"):
+for e in SQL.getSQL(conn, f"SELECT * FROM {table_name}"):
     if e[2]:
         first_sent.append(e[0])
         second_sent.append(e[1])
@@ -88,7 +87,7 @@ for e in getSQL(conn, f"SELECT * FROM {table_name}"):
 tmp_x = pad(first_preproc_sentences, second_preproc_sentences.shape[1])
 tmp_x = tmp_x.reshape((-1, second_preproc_sentences.shape[-2]))
 
-rnn_model = language_model(
+rnn_model = ai.language_model(
     tmp_x.shape,
     second_preproc_sentences.shape[1],
     len(first_tokenizer.word_index) + 1,
@@ -124,7 +123,7 @@ batch_size = 256
 try:
     if in_develop:
         exit(0)
-    cleanScreen()
+    utils.cleanScreen()
     rnn_model.summary()
 
     history = rnn_model.fit(
