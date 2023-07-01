@@ -681,6 +681,7 @@ trans_dict = TransServer.TranslatorsServer().translators_dict
 
 # logger init
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s\n%(message)s")
+os.makedirs("logs", exist_ok=True)
 os.makedirs(".wav", exist_ok=True)
 
 file_handler = logging.FileHandler(f"./logs/{target}.log")
