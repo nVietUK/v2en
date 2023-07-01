@@ -1,6 +1,11 @@
 import tensorflow as tf
 from v2enlib import const
 
+
+def lr_schedule(epoch, lr):
+    return lr if epoch < 10 else lr * tf.math.exp(-0.1)
+
+
 def language_model(
     input_shape, output_sequence_length, input_vocab_size, output_vocab_size
 ):
@@ -28,10 +33,10 @@ def language_model(
         )
     )
     # Encoder
-    model.add(layers.Bidirectional(layers.GRU(latent_dim)))
+    model.add(layers.Bidirectional(layers.LSTM(latent_dim)))
     model.add(layers.RepeatVector(output_sequence_length))
     # Decoder
-    model.add(layers.Bidirectional(layers.GRU(latent_dim, return_sequences=True)))
+    model.add(layers.Bidirectional(layers.LSTM(latent_dim, return_sequences=True)))
     model.add(layers.TimeDistributed(layers.Dense(latent_dim * 4, activation="relu")))
     model.add(layers.Dropout(0.5))
     model.add(
@@ -40,7 +45,7 @@ def language_model(
 
     model.compile(
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-        optimizer=tf.keras.optimizers.Adam(learning_rate=const.learning_rate * 5),
+        optimizer=tf.keras.optimizers.Adam(learning_rate=const.learning_rate * 10),
         metrics=["accuracy"],
     )
 

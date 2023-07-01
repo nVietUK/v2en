@@ -109,21 +109,18 @@ earlystop_accuracy = tf.keras.callbacks.EarlyStopping(
 earlystop_loss = tf.keras.callbacks.EarlyStopping(
     monitor="val_loss", patience=10, verbose=1, mode="min"
 )
-reducelr = tf.keras.callbacks.ReduceLROnPlateau(
-    monitor="val_loss", factor=0.2, patience=2, min_lr=learning_rate, verbose=1
-)
 update_pruning = tfmot.sparsity.keras.UpdatePruningStep()
 callbacks = [
     checkpoint,
     earlystop_accuracy,
     earlystop_loss,
-    reducelr,
-    tf.keras.callbacks.TensorBoard(log_dir="./logs")
+    tf.keras.callbacks.TensorBoard(log_dir="./logs"),
+    tf.keras.callbacks.LearningRateScheduler(ai.lr_schedule)
 ]
 if allow_pruning:
     callbacks += [update_pruning]
 
-batch_size = 512
+batch_size = 450
 try:
     if in_develop:
         exit(0)
