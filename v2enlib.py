@@ -549,7 +549,6 @@ def addSent(input_sent: InputSent, first_dictionary, second_dictionary):
         print_data += [
             [e.isFrom, e.first, e.second, e.accurate] for e in trans_data if e.isAdd
         ]
-        width = int(terminalWidth() / 4)
         if len(print_data) < 10:
             logging.info(
                 tabulate(
@@ -557,7 +556,7 @@ def addSent(input_sent: InputSent, first_dictionary, second_dictionary):
                     headers=["From", "Source", "Target", "Accuracy?"],
                     tablefmt="fancy_grid",
                     showindex="always",
-                    maxcolwidths=[None, None, width, width, 7],
+                    maxcolwidths=[None, None, 45, 45, 7],
                     floatfmt=(".2f" * 5),
                 ),
             )
