@@ -267,8 +267,13 @@ def functionPool(
         processes=min(len(cmds), thread_limit if thread_limit > 0 else len(cmds)),
     ) as ex:
         if not thread_alow or not isAllowThread:
-            return [func(cmd) for cmd in tqdm(cmds, leave=False, desc=poolName)]
-        with tqdm(total=len(cmds), leave=False, desc=poolName) as pbar:
+            return [
+                func(cmd)
+                for cmd in tqdm(cmds, leave=False, desc=poolName, disable=disableTQDM)
+            ]
+        with tqdm(
+            total=len(cmds), leave=False, desc=poolName, disable=disableTQDM
+        ) as pbar:
             results = []
             for res in (
                 ex.imap(func, cmds) if strictOrder else ex.imap_unordered(func, cmds)
@@ -293,9 +298,11 @@ def argsPool(
         if not thread_alow or not isAllowThread:
             return [
                 subexecutor([func, kwargs])
-                for func in tqdm(funcs, leave=False, desc=poolName)
+                for func in tqdm(funcs, leave=False, desc=poolName, disable=disableTQDM)
             ]
-        with tqdm(total=len(funcs), leave=False, desc=poolName) as pbar:
+        with tqdm(
+            total=len(funcs), leave=False, desc=poolName, disable=disableTQDM
+        ) as pbar:
             results = []
             kwargsc = [dict(kwargs) for _ in range(len(funcs))]
             for res in (
