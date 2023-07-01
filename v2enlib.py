@@ -254,7 +254,7 @@ def terminalWidth():
     try:
         return os.get_terminal_size().columns
     except Exception:
-        return 250
+        return 0
 
 
 # thread utils
@@ -657,8 +657,8 @@ try:
     first_lang = target[:2]
     second_lang = target[-2:]
     accept_percentage = cfg["v2en"]["accept_percentage"]
-    time_allow = cfg["v2en"]['allow']["time"]
-    resource_allow = cfg["v2en"]['allow']["resource"]
+    time_allow = cfg["v2en"]["allow"]["time"]
+    resource_allow = cfg["v2en"]["allow"]["resource"]
     thread_alow = cfg["v2en"]["thread"]["allow"]
     thread_limit = cfg["v2en"]["thread"]["limit"]
     table_name = cfg["sqlite"]["table_name"]
@@ -669,6 +669,7 @@ try:
     end_step = cfg["training"]["end_step"]
     learning_rate = cfg["training"]["learning_rate"]
     allow_pruning = cfg["training"]["allow_pruning"]
+    disableTQDM = not terminalWidth()
 except Exception as e:
     printError("importing config", e, True)
     exit()
