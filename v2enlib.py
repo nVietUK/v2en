@@ -251,7 +251,10 @@ def measureFunction(func):
 
 
 def terminalWidth():
-    return os.get_terminal_size().columns
+    try:
+        return os.get_terminal_size().columns
+    except Exception:
+        return 250
 
 
 # thread utils
