@@ -22,7 +22,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: execute py script # run main.py
-        run: python addsent.py --amount-exe 1000
+        run: python addsent.py --amount-exe 1000 --ci_cd
 
       - name: commit files
         run: |
