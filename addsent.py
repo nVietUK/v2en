@@ -1,8 +1,7 @@
-import contextlib, tkinter as tk
+import contextlib
 import yaml, signal, time, gc, os, argparse
 from multiprocessing import Process
 from multiprocessing.pool import Pool
-from pynput import keyboard
 from v2enlib import printError
 
 try:
@@ -16,6 +15,8 @@ try:
     table_name = cfg["sqlite"]["table_name"]
     safe_execute = cfg["v2en"]["safe_execute"]
     allowFalseTranslation = cfg["v2en"]["allow"]["FalseTranslation"]
+    if allow_GUI:
+        import tkinter as tk
 except Exception as e:
     printError("importing config", e, True)
     exit(0)
@@ -119,7 +120,7 @@ def safeExecute(
     false_count, first_dump_sents, second_dump_sents, exe_count = 0, [], [], 0
     global main_execute
     while main_execute:
-        exe_count+=1
+        exe_count += 1
         time_start = time.time()
         if emptyFile(first_path) or emptyFile(second_path):
             print("Done!")
@@ -166,7 +167,7 @@ def safeExecute(
         )
         del cmds, first_dump_sent, second_dump_sent
         gc.collect()
-        if (exe_count == fargs.amount_exe):
+        if exe_count == fargs.amount_exe:
             break
     saveFiles(
         sql_connection,
@@ -188,8 +189,9 @@ def unsafeExecute(saveIN, saveOU, sql_connection, first_dictionary, second_dicti
 
 def main(fargs):
     playNotes(*sound_tracks["macos_startup"])
-    listener = keyboard.Listener(on_press=on_press)
-    listener.start()
+    if not fargs.ci_cd:
+        listener = keyboard.Listener(on_press=on_press)
+        listener.start()
     checkLangFile(first_lang, second_lang)
     first_dictionary = loadDictionary(first_dictionary_path)
     second_dictionary = loadDictionary(second_dictionary_path)
@@ -225,5 +227,15 @@ if __name__ == "__main__":
         nargs="?",
         default=0,
     )
+    parser.add_argument(
+        '--ci_cd',
+        type=bool,
+        help='run addsent.py on ci/cd environment',
+        nargs='?',
+        default=False,
+        const=True
+    )
     fargs = parser.parse_args()
+    if not fargs.ci_cd:
+        from pynput import keyboard
     main(fargs)

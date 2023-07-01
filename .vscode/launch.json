@@ -28,6 +28,7 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "subProcess": true,
+            "args": ["--ci_cd"]
         }
     ]
 }
