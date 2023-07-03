@@ -1,49 +1,44 @@
 <template>
-  <q-page class="row items-center justify-evenly">
-    <ExampleComponent
-      title="Example component"
-      active
-      :todos="todos"
-      :meta="meta"
-    ></ExampleComponent>
-  </q-page>
+  <div class="row">
+    <div class="col"></div>
+    <div class="col-6 position-relative">
+      <iframe
+        id="my-iframe"
+        src="https://htmlpreview.github.io/?https://raw.githubusercontent.com/TakahashiNguyen/TakahashiNguyen/main/README.md"
+        style="width: 100%; border: none"
+        onload="resizeIframe"
+      ></iframe>
+    </div>
+    <div class="col"></div>
+  </div>
 </template>
 
 <script lang="ts">
-import { Todo, Meta } from 'components/models';
-import ExampleComponent from 'components/ExampleComponent.vue';
-import { defineComponent, ref } from 'vue';
+import { defineComponent } from 'vue';
+
+async function fetchContent() {
+  const url = 'https://example.com/content-to-copy';
+
+  const response = await fetch(url);
+  const html = await response.text();
+
+  const container = document.createElement('div');
+  container.innerHTML = html;
+
+  const content = container.querySelector('#content-to-copy');
+
+  if (content) {
+    const height = content. | 0;
+    content.style.height = height + 'px';
+
+    return content.outerHTML;
+  }
+}
 
 export default defineComponent({
   name: 'IndexPage',
-  components: { ExampleComponent },
   setup() {
-    const todos = ref<Todo[]>([
-      {
-        id: 1,
-        content: 'ct1'
-      },
-      {
-        id: 2,
-        content: 'ct2'
-      },
-      {
-        id: 3,
-        content: 'ct3'
-      },
-      {
-        id: 4,
-        content: 'ct4'
-      },
-      {
-        id: 5,
-        content: 'ct5'
-      }
-    ]);
-    const meta = ref<Meta>({
-      totalCount: 1200
-    });
-    return { todos, meta };
+    return {fetchContent()}
   }
-});
+})
 </script>

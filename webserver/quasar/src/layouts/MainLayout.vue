@@ -33,7 +33,7 @@ const linksList = [
     title: 'Github',
     caption: 'github.com/takahashinguyen',
     icon: 'code',
-    link: 'https://github.com/takahashinguyen',
+    link: '/',
   },
 ];
 

@@ -2,9 +2,6 @@ name: run addsent.py
 
 on:
   workflow_dispatch:
-  push:
-    branches: 
-      - main
 
 jobs:
   execute_python_file:
