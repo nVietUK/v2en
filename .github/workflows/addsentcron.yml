@@ -25,16 +25,14 @@ jobs:
         if: steps.cache-pip.outputs.cache-hit != 'true'
 
       - name: execute py script # run main.py
-        run: python addsent.py --amount-exe 1 --ci_cd --disable-thread
+        run: python addsent.py --amount-exe 129 --ci_cd --disable-thread
 
-      - name: commit files
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add -A
-          git diff-index --quiet HEAD || (git commit -a -m "updated logs" --allow-empty)
-      - name: push changes
-        uses: ad-m/github-push-action@v0.6.0
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5.0.2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: main 
+          commit-message: Update database
+          title: Update database
+          body: Please check the log file before pull
+          base: main
+          branch: addsent-bot-run
+          delete-branch: true
