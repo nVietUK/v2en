@@ -2,6 +2,9 @@ name: run addsent.py
 
 on:
   workflow_dispatch:
+  push:
+    branches: 
+      - main
 
 jobs:
   execute_python_file:
@@ -25,7 +28,7 @@ jobs:
         if: steps.cache-pip.outputs.cache-hit != 'true'
 
       - name: execute py script # run main.py
-        run: python addsent.py --amount-exe 1 --ci_cd --disable-thread
+        run: python addsent.py --amount-exe 129 --ci_cd --disable-thread
 
       - name: commit files
         run: |
@@ -37,4 +40,4 @@ jobs:
         uses: ad-m/github-push-action@v0.6.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: main 
+          branch: main
