@@ -12,7 +12,7 @@
     "dev": "quasar dev",
     "quasar:build": "quasar build",
     "nest:build": "nest build",
-    "start:debug": "quasar dev --inspect",
+    "start:debug": "quasar dev --inspect"
   },
   "dependencies": {
     "@nestjs/cli": "^10.1.1",
@@ -79,22 +79,5 @@
     "node": ">= 12.22.1",
     "npm": ">= 6.13.4",
     "yarn": ">= 1.21.1"
-  },
-  "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
-    "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
-    },
-    "collectCoverageFrom": [
-      "**/*.(t|j)s"
-    ],
-    "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
   }
 }
