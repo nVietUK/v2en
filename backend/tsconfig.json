@@ -7,7 +7,7 @@
     "outDir": "./dist",
     "moduleResolution": "node",
     "declaration": false,
-
+    "esModuleInterop": true,
     "composite": false,
     "removeComments": true,
     "noImplicitAny": true,
@@ -18,7 +18,7 @@
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "allowSyntheticDefaultImports": false,
+    "allowSyntheticDefaultImports": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "skipLibCheck": true,
