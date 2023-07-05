@@ -4,6 +4,9 @@ import { buildSchema } from "type-graphql";
 import "reflect-metadata";
 import { DataSource } from "typeorm";
 import { RegisterResolver } from "./modules/user/Register";
+import cors from "cors";
+
+const port = 3000;
 
 const main = async () => {
   const appDataSource = new DataSource({
@@ -19,22 +22,32 @@ const main = async () => {
     entities: ["src/entity/*.*"],
   });
 
-  appDataSource.initialize()
+  appDataSource
+    .initialize()
     .then(() => {
-      console.log('Data source has been initialized!')
+      console.log("Data source has been initialized!");
     })
     .catch((err) => {
-      console.error('Error during initialized data source', err)
-    })
+      console.error("Error during initialized data source", err);
+    });
 
   const schema = await buildSchema({
     resolvers: [RegisterResolver],
   });
 
-  const apolloServer = new ApolloServer({ schema: schema });
+  const apolloServer = new ApolloServer({
+    schema: schema,
+    context: ({ req }: any) => ({ req }),
+  });
 
   const app = Express();
-  const port = 3000;
+
+  app.use(
+    cors({
+      credentials: true,
+      origin: "http://localhost:" + port,
+    })
+  );
 
   await apolloServer.start();
   apolloServer.applyMiddleware({ app });
