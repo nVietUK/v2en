@@ -28,13 +28,9 @@ jobs:
         run: python addsent.py --amount-exe 129 --ci_cd --disable-thread
 
       - name: commit files
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add -A
-          git diff-index --quiet HEAD || (git commit -a -m "updated logs" --allow-empty)
-      - name: push changes
-        uses: ad-m/github-push-action@v0.6.0
+        uses: crazy-max/ghaction-github-pages@v3.1.0
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: main
+          target_branch: main
+          build_dir: .
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
