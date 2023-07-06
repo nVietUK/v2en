@@ -25,6 +25,7 @@ import { Data } from './data/data.entity';
 			username: 'admin',
 			password: 'Vanh@Mysql2006',
 			database: 'typegraphql',
+			name: 'typegraphql',
 			synchronize: true,
 			logging: true,
 			connectorPackage: 'mysql2',
@@ -41,6 +42,6 @@ import { Data } from './data/data.entity';
 		}),
 	],
 	controllers: [AppController],
-	providers: [AppService, DataResolver, DataService, DataRepository, DataSource],
+	providers: [AppService],
 })
 export class AppModule {}

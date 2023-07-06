@@ -1,8 +1,19 @@
-import { DeepPartial, EntityRepository, FindOptionsWhere, Repository } from 'typeorm';
+import { DataSource, DeepPartial, FindOptionsWhere, Repository } from 'typeorm';
 import { Data } from './data.entity';
+import { Injectable } from '@nestjs/common';
 
-@EntityRepository(Data)
+@Injectable()
 export class DataRepository extends Repository<Data> {
+	constructor(
+		dataSource: DataSource = new DataSource({
+			connectorPackage: 'mysql2',
+			type: 'mysql',
+			name: 'default',
+		}),
+	) {
+		super(Data, dataSource.createEntityManager());
+	}
+
 	async findAll(): Promise<Data[]> {
 		return await this.find();
 	}
