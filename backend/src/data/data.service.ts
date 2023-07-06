@@ -1,26 +1,28 @@
 import { Injectable } from '@nestjs/common';
+import { DeepPartial, FindOptionsWhere } from 'typeorm';
 import { Data } from './data.entity';
-import { NewDataInput } from './dto/data.args';
-import { FindOptionsWhere } from 'typeorm';
 import { DataRepository } from './data.repository';
 
 @Injectable()
 export class DataService {
-	constructor(private dataRepository: DataRepository) {}
+	constructor(private readonly dataRepository: DataRepository) {}
 
-	findAll(): Promise<Data[]> {
-		return this.dataRepository.find();
+	async findAll(): Promise<Data[]> {
+		return await this.dataRepository.find();
 	}
 
-	findOneBy(where: FindOptionsWhere<Data>): Promise<Data> {
-		return this.dataRepository.findOneBy(where);
+	async findOneBy(args: FindOptionsWhere<Data>): Promise<Data> {
+		return await this.dataRepository.findOneBy(args);
 	}
 
-	async remove(id: number): Promise<void> {
-		await this.dataRepository.delete(id);
+	async createData(createDataInput: DeepPartial<Data>): Promise<Data> {
+		const data = this.dataRepository.create(createDataInput);
+		return await this.dataRepository.save(data);
 	}
 
-	async create(newDataInput: NewDataInput): Promise<Data> {
-		return await this.dataRepository.create(newDataInput);
+	async removeData(arg: FindOptionsWhere<Data>): Promise<Data> {
+		const data = await this.findOneBy(arg);
+		await this.dataRepository.remove(data);
+		return new Data('', '', '', false);
 	}
 }

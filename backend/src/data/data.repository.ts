@@ -1,36 +1,24 @@
-import { Injectable } from '@nestjs/common';
-import { DataSource, Repository } from 'typeorm';
+import { DeepPartial, EntityRepository, FindOptionsWhere, Repository } from 'typeorm';
 import { Data } from './data.entity';
 
-@Injectable()
+@EntityRepository(Data)
 export class DataRepository extends Repository<Data> {
-	constructor(
-		private dataSource: DataSource = new DataSource({
-			connectorPackage: 'mysql2',
-			type: 'mysql',
-		}),
-	) {
-		super(Data, dataSource.createEntityManager());
-	}
-
-	async All(): Promise<Data[]> {
-		return await this.dataSource
-			.getRepository(Data)
-			.createQueryBuilder()
-			.getMany();
-	}
-
-	async findOneByID(id: number): Promise<Data | null> {
-		return await this.dataSource.getRepository(Data).findOneBy({ id: id });
-	}
-
-	async findOneByHashValue(hashValue: string): Promise<Data | null> {
-		return await this.dataSource
-			.getRepository(Data)
-			.findOneBy({ hashValue: hashValue });
-	}
-
 	async findAll(): Promise<Data[]> {
-		return await this.dataSource.getRepository(Data).find();
+		return await this.find();
+	}
+
+	async findOneBy(args: FindOptionsWhere<Data>): Promise<Data> {
+		return await this.findOneBy(args);
+	}
+
+	async createData(createDataInput: DeepPartial<Data>): Promise<Data> {
+		const data = this.create(createDataInput);
+		return await this.save(data);
+	}
+
+	async removeData(arg: FindOptionsWhere<Data>): Promise<Data> {
+		const data = await this.findOneBy(arg);
+		await this.remove(data);
+		return new Data('', '', '', false);
 	}
 }

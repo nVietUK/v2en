@@ -1,7 +1,7 @@
 import { Body, Controller, Post, Get, Param, Delete } from '@nestjs/common';
 import { DataService } from './data.service';
 import { Data } from './data.entity';
-import { NewDataInput } from './dto/data.args';
+import { NewDataInput } from './data.args';
 import { FindOptionsWhere } from 'typeorm';
 
 @Controller('data')
@@ -9,7 +9,7 @@ export class DataController {
 	constructor(private dataService: DataService) {}
 	@Post()
 	create(@Body() newDataInput: NewDataInput): Promise<Data> {
-		return this.dataService.create(newDataInput);
+		return this.dataService.createData(newDataInput);
 	}
 
 	@Get()
@@ -17,13 +17,13 @@ export class DataController {
 		return this.dataService.findAll();
 	}
 
-	@Get(':id')
+	@Get()
 	findOneBy(@Param('args') args: FindOptionsWhere<Data>): Promise<Data> {
 		return this.dataService.findOneBy(args);
 	}
 
-	@Delete(':id')
-	remove(@Param('id') id: number): Promise<void> {
-		return this.dataService.remove(id);
+	@Delete()
+	remove(@Param('arg') arg: FindOptionsWhere<Data>): Promise<Data> {
+		return this.dataService.removeData(arg);
 	}
 }

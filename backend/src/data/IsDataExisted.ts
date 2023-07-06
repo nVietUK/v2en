@@ -4,24 +4,22 @@ import {
 	ValidatorConstraintInterface,
 	registerDecorator,
 } from 'class-validator';
-import { hash } from 'bcrypt';
-import { DataRepository } from './data.repository';
+import { Md5 } from 'ts-md5';
 import { Controller, Get } from '@nestjs/common';
+import { DataService } from './data.service';
 
 @Controller('data')
 @ValidatorConstraint({ async: true })
 export class IsDataExistedConstraint implements ValidatorConstraintInterface {
-	constructor(private readonly dataRepository: DataRepository) {}
+	constructor(private dataRepository: DataService) {}
 
 	@Get(':hashValue')
-	async validate(value: string) {
-		return hash(value, 12).then((value) => {
-			return this.dataRepository
-				.findOneByHashValue(value)
-				.then((data) => {
-					return !data;
-				});
-		});
+	validate(value: string) {
+		return this.dataRepository
+			.findOneBy({ hashValue: Md5.hashStr(value) })
+			.then((data) => {
+				return !data;
+			});
 	}
 }
 

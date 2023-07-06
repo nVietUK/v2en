@@ -1,5 +1,5 @@
 import { ArgsType, Field, InputType } from '@nestjs/graphql';
-import { IsDataExisted } from '../IsDataExisted';
+import { IsDataExisted } from './IsDataExisted';
 
 @ArgsType()
 @InputType()
@@ -16,32 +16,14 @@ export class NewDataInput {
 		this.verified = verified;
 	}
 
-	private _origin: string;
 	@Field()
-	get origin(): string {
-		return this._origin;
-	}
-	set origin(value: string) {
-		this._origin = value;
-	}
+	origin: string;
 
-	private _translated: string;
 	@Field()
-	get translated(): string {
-		return this._translated;
-	}
-	set translated(value: string) {
-		this._translated = value;
-	}
+	translated: string;
 
-	private _translator: string;
 	@Field()
-	get translator(): string {
-		return this._translator;
-	}
-	set translator(value: string) {
-		this._translator = value;
-	}
+	translator: string;
 
 	@IsDataExisted({ message: 'This data is already existed' })
 	get nonHashValue(): string {
