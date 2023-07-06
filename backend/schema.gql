@@ -1,0 +1,35 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+directive @upper on FIELD_DEFINITION
+
+type Data {
+  id: Float!
+  origin: String!
+  translated: String!
+  translator: String!
+  hashValue: String!
+  verified: Boolean!
+}
+
+type Query {
+  data(id: Float!): Data!
+  datas: [Data!]!
+}
+
+type Mutation {
+  addData(newDataInput: NewDataInput!): Data!
+}
+
+input NewDataInput {
+  origin: String!
+  translated: String!
+  translator: String!
+  value: String! = "undefined undefined undefined"
+  verified: Boolean!
+}
+
+type Subscription {
+  dataAdded: Data!
+}

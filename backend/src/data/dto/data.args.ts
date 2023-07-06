@@ -1,7 +1,8 @@
-import { ArgsType, Field } from '@nestjs/graphql';
+import { ArgsType, Field, InputType } from '@nestjs/graphql';
 import { IsDataExisted } from '../IsDataExisted';
 
 @ArgsType()
+@InputType()
 export class NewDataInput {
 	constructor(
 		origin: string,
