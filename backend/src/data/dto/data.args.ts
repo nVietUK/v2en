@@ -26,7 +26,6 @@ export class NewDataInput {
 	@Field()
 	translator: string;
 
-	@Field()
 	@IsDataExisted({ message: 'This data is already existed' })
 	value: string;
 

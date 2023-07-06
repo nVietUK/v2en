@@ -26,8 +26,8 @@ input NewDataInput {
   origin: String!
   translated: String!
   translator: String!
-  value: String! = "undefined undefined undefined"
   verified: Boolean!
+  value: String! = "undefined undefined undefined"
 }
 
 type Subscription {
