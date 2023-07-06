@@ -5,7 +5,7 @@ import { DataRepository } from './data.repository';
 
 @Injectable()
 export class DataService {
-	constructor(private readonly dataRepository: DataRepository) {}
+	constructor(private readonly dataRepository: DataRepository = new DataRepository()) {}
 
 	async findAll(): Promise<Data[]> {
 		return await this.dataRepository.find();

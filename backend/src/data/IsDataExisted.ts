@@ -11,7 +11,7 @@ import { DataService } from './data.service';
 @Controller('data')
 @ValidatorConstraint({ async: true })
 export class IsDataExistedConstraint implements ValidatorConstraintInterface {
-	constructor(private dataRepository: DataService) {}
+	constructor(private dataRepository: DataService = new DataService()) {}
 
 	@Get(':hashValue')
 	validate(value: string) {
