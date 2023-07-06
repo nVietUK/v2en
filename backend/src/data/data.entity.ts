@@ -2,7 +2,7 @@ import { Field, ObjectType } from '@nestjs/graphql';
 import { Md5 } from 'ts-md5';
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
-@Entity({ name: 'Data' })
+@Entity()
 @ObjectType()
 export class Data {
 	constructor(origin = '', translated = '', translator = '', verified = false) {

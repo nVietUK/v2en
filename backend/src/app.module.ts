@@ -6,8 +6,12 @@ import { DataModule } from './data/data.module';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Data } from './data/data.entity';
 import { ConfigModule } from '@nestjs/config';
+import { DataRepository } from './data/data.repository';
+import { DataSource } from 'typeorm';
+import { DataService } from './data/data.service';
+import { DataResolver } from './data/data.resolver';
+import { Data } from './data/data.entity';
 
 @Module({
 	imports: [
@@ -15,7 +19,6 @@ import { ConfigModule } from '@nestjs/config';
 			isGlobal: true,
 		}),
 		TypeOrmModule.forRoot({
-			name: 'Data',
 			type: 'mysql',
 			host: 'localhost',
 			port: 3306,
@@ -24,9 +27,11 @@ import { ConfigModule } from '@nestjs/config';
 			database: 'typegraphql',
 			synchronize: true,
 			logging: true,
+			connectorPackage: 'mysql2',
 			autoLoadEntities: true,
 			entities: [Data],
 		}),
+		TypeOrmModule.forFeature([DataRepository]),
 		UserModule,
 		DataModule,
 		GraphQLModule.forRoot<ApolloDriverConfig>({
@@ -36,6 +41,6 @@ import { ConfigModule } from '@nestjs/config';
 		}),
 	],
 	controllers: [AppController],
-	providers: [AppService],
+	providers: [AppService, DataResolver, DataService, DataRepository, DataSource],
 })
 export class AppModule {}
