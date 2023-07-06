@@ -6,7 +6,7 @@ import { FindOptionsWhere } from 'typeorm';
 
 @Controller('data')
 export class DataController {
-	constructor(private readonly dataService: DataService) {}
+	constructor(private dataService: DataService) {}
 	@Post()
 	create(@Body() newDataInput: NewDataInput): Promise<Data> {
 		return this.dataService.create(newDataInput);

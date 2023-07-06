@@ -1,15 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { Data } from './data.entity';
 import { NewDataInput } from './dto/data.args';
-import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, Repository } from 'typeorm';
+import { FindOptionsWhere } from 'typeorm';
+import { DataRepository } from './data.repository';
 
 @Injectable()
 export class DataService {
-	constructor(
-		@InjectRepository(Data)
-		private readonly dataRepository: Repository<Data>,
-	) {}
+	constructor(private dataRepository: DataRepository) {}
 
 	findAll(): Promise<Data[]> {
 		return this.dataRepository.find();
