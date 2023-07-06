@@ -13,7 +13,9 @@ export class DataResolver {
 
 	@Query(() => Data)
 	async data(@Args('id') id: number): Promise<Data> {
-		const data = await this.dataService.findOneBy({ id: id });
+		const data = await this.dataService.findOneBy({
+			id: id,
+		});
 		if (!data) {
 			throw new NotFoundException(id);
 		}

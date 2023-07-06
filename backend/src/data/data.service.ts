@@ -1,29 +1,29 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import { Data } from './data.entity';
-import { FindOptionsWhere, Repository } from 'typeorm';
 import { NewDataInput } from './dto/data.args';
+import { InjectRepository } from '@nestjs/typeorm';
+import { FindOptionsWhere, Repository } from 'typeorm';
 
 @Injectable()
 export class DataService {
 	constructor(
 		@InjectRepository(Data)
-		private datasRepository: Repository<Data>,
+		private readonly dataRepository: Repository<Data>,
 	) {}
 
 	findAll(): Promise<Data[]> {
-		return this.datasRepository.find();
+		return this.dataRepository.find();
 	}
 
 	findOneBy(where: FindOptionsWhere<Data>): Promise<Data> {
-		return this.datasRepository.findOneBy(where);
+		return this.dataRepository.findOneBy(where);
 	}
 
 	async remove(id: number): Promise<void> {
-		await this.datasRepository.delete(id);
+		await this.dataRepository.delete(id);
 	}
 
 	async create(newDataInput: NewDataInput): Promise<Data> {
-		return await this.datasRepository.create(newDataInput);
+		return await this.dataRepository.create(newDataInput);
 	}
 }

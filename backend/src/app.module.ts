@@ -31,7 +31,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 			}),
 			inject: [ConfigService],
 		}),
-		TypeOrmModule.forFeature([Data]),
 		UserModule,
 		DataModule,
 		GraphQLModule.forRoot<ApolloDriverConfig>({

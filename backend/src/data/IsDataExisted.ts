@@ -5,17 +5,19 @@ import {
 	registerDecorator,
 } from 'class-validator';
 import { hash } from 'bcrypt';
-import { DataService } from './data.service';
+import { DataController } from './data.controller';
 
 @ValidatorConstraint({ async: true })
 export class IsDataExistedConstraint implements ValidatorConstraintInterface {
-	constructor(private readonly dataService: DataService) {}
+	constructor(private readonly dataService: DataController) {}
 	validate(value: string) {
-		return this.dataService
-			.findOneBy({ hashValue: hash(value, 12) as unknown as string })
-			.then((data) => {
-				return !data;
-			});
+		return hash(value, 12).then((value) => {
+			return this.dataService
+				.findOneBy({ hashValue: value })
+				.then((data) => {
+					return !data;
+				});
+		});
 	}
 }
 

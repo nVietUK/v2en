@@ -13,23 +13,38 @@ export class NewDataInput {
 		this.origin = origin;
 		this.translated = translated;
 		this.translator = translator;
-		this.value = this.getCombinedValue();
 		this.verified = verified;
 	}
 
+	private _origin: string;
 	@Field()
-	origin: string;
+	get origin(): string {
+		return this._origin;
+	}
+	set origin(value: string) {
+		this._origin = value;
+	}
 
+	private _translated: string;
 	@Field()
-	translated: string;
+	get translated(): string {
+		return this._translated;
+	}
+	set translated(value: string) {
+		this._translated = value;
+	}
 
+	private _translator: string;
 	@Field()
-	translator: string;
+	get translator(): string {
+		return this._translator;
+	}
+	set translator(value: string) {
+		this._translator = value;
+	}
 
 	@IsDataExisted({ message: 'This data is already existed' })
-	value: string;
-
-	getCombinedValue(): string {
+	get nonHashValue(): string {
 		return `${this.origin} ${this.translated} ${this.translator}`;
 	}
 
