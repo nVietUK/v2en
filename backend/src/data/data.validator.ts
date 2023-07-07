@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import {
 	registerDecorator,
 	ValidationOptions,
@@ -6,6 +5,7 @@ import {
 	ValidatorConstraintInterface,
 } from 'class-validator';
 import { DataService } from './data.service';
+import { Injectable } from '@nestjs/common';
 
 export function IsDataExistedByHashValue(validationOptions?: ValidationOptions) {
 	return function (object: any, propertyName: string) {
