@@ -2,7 +2,7 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
-type Data {
+type DataObject {
   """the origin of sentence"""
   origin: String!
 
@@ -18,23 +18,31 @@ type Data {
   hashValue: String!
 }
 
+input DataInput {
+  """the origin of sentence"""
+  origin: String! = ""
+
+  """the translated of sentence"""
+  translated: String! = ""
+
+  """the sentence's translator"""
+  translator: String! = ""
+
+  """confirm that data is verified by authorizer"""
+  verified: Boolean! = false
+  id: Float
+  hashValue: String! = "23b58def11b45727d3351702515f86af"
+}
+
 type Query {
-  data(id: Float!): Data!
-  datas: [Data!]!
+  data(id: Float!): DataObject!
+  datas: [DataObject!]!
 }
 
 type Mutation {
-  addData(newDataInput: NewDataInput!): Data!
-}
-
-input NewDataInput {
-  origin: String!
-  translated: String!
-  translator: String!
-  verified: Boolean!
-  nonHashValue: String! = "undefined undefined undefined"
+  addData(newData: DataInput!): DataObject!
 }
 
 type Subscription {
-  dataAdded: Data!
+  dataAdded: DataObject!
 }

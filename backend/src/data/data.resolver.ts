@@ -1,5 +1,4 @@
 import { Args, Mutation, Query, Resolver, Subscription } from '@nestjs/graphql';
-import { NewDataInput } from './data.args';
 import { DataService } from './data.service';
 import { NotFoundException } from '@nestjs/common';
 import { Data } from './data.entity';
@@ -28,15 +27,8 @@ export class DataResolver {
 	}
 
 	@Mutation(() => Data)
-	async addData(@Args('newDataInput') newDataInput: NewDataInput): Promise<Data> {
-		const data = await this.dataService.create(
-			new NewDataInput(
-				newDataInput.origin,
-				newDataInput.translated,
-				newDataInput.translator,
-				newDataInput.verified,
-			),
-		);
+	async addData(@Args('newData') newData: Data): Promise<Data> {
+		const data = await this.dataService.create(newData);
 
 		pubSub.publish('dataAdded', { dataAdded: data });
 		return data;

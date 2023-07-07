@@ -1,9 +1,10 @@
-import { Field, ObjectType } from '@nestjs/graphql';
+import { Field, InputType, ObjectType } from '@nestjs/graphql';
 import { Md5 } from 'ts-md5';
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, PrimaryColumn, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
-@ObjectType()
+@ObjectType('DataObject')
+@InputType('DataInput')
 export class Data {
 	constructor(origin = '', translated = '', translator = '', verified = false) {
 		this.origin = origin;
@@ -13,21 +14,22 @@ export class Data {
 	}
 
 	@PrimaryGeneratedColumn()
-	id: number | undefined;
+	@PrimaryColumn('int')
+	id?: number;
 
-	@Column('int')
 	@Field(() => String, { description: 'the origin of sentence' })
+	@Column('longtext')
 	origin: string;
 
-	@Column()
+	@Column('longtext')
 	@Field(() => String, { description: 'the translated of sentence' })
 	translated: string;
 
-	@Column()
+	@Column('longtext')
 	@Field(() => String, { description: "the sentence's translator" })
 	translator: string;
 
-	@Column({ nullable: false })
+	@Column('longtext', { nullable: false })
 	get hashValue(): string {
 		return Md5.hashStr(`${this.origin} ${this.translated} ${this.translator}`);
 	}
