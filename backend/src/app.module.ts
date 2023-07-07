@@ -7,9 +7,7 @@ import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { DataRepository } from './data/data.repository';
 import { Data } from './data/data.entity';
-import { IsDataExistedByHashValueConstraint } from './data/data.validator';
 
 export const myConnectionOptions = async (
 	configService: ConfigService,
@@ -38,7 +36,6 @@ export const myConnectionOptions = async (
 			useFactory: myConnectionOptions,
 			inject: [ConfigService],
 		}),
-		TypeOrmModule.forFeature([DataRepository, IsDataExistedByHashValueConstraint]),
 		UserModule,
 		DataModule,
 		GraphQLModule.forRoot<ApolloDriverConfig>({

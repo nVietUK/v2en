@@ -9,6 +9,6 @@ import { DataResolver } from './data.resolver';
 @Module({
 	controllers: [DataController],
 	providers: [DataService, DataRepository, DataResolver],
-	imports: [TypeOrmModule.forFeature([Data])],
+	imports: [TypeOrmModule.forFeature([Data, DataRepository])],
 })
 export class DataModule {}
