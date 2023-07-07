@@ -3,7 +3,7 @@ import { DataService } from './data.service';
 import { Data } from './data.entity';
 import { FindOptionsWhere } from 'typeorm';
 
-@Controller('data')
+@Controller()
 export class DataController {
 	constructor(private dataService: DataService) {}
 	@Post()

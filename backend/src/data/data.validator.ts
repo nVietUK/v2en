@@ -1,3 +1,4 @@
+import { Injectable } from '@nestjs/common';
 import {
 	registerDecorator,
 	ValidationOptions,
@@ -17,9 +18,10 @@ export function IsDataExistedByHashValue(validationOptions?: ValidationOptions) 
 	};
 }
 
+@Injectable()
 @ValidatorConstraint({ async: true })
 export class IsDataExistedByHashValueConstraint implements ValidatorConstraintInterface {
-	constructor(private connection: any) {}
+	constructor(private readonly connection: any) {}
 
 	async validate(value: any): Promise<boolean> {
 		return await this.createQueryBuilder(value);
