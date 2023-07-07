@@ -29,7 +29,7 @@ export class DataResolver {
 
 	@Mutation(() => Data)
 	async addData(@Args('newDataInput') newDataInput: NewDataInput): Promise<Data> {
-		const data = await this.dataService.createData(
+		const data = await this.dataService.create(
 			new NewDataInput(
 				newDataInput.origin,
 				newDataInput.translated,

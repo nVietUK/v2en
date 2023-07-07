@@ -9,7 +9,7 @@ export class DataController {
 	constructor(private dataService: DataService) {}
 	@Post()
 	create(@Body() newDataInput: NewDataInput): Promise<Data> {
-		return this.dataService.createData(newDataInput);
+		return this.dataService.create(newDataInput);
 	}
 
 	@Get()
@@ -18,12 +18,12 @@ export class DataController {
 	}
 
 	@Get()
-	findOneBy(@Param('args') args: FindOptionsWhere<Data>): Promise<Data> {
+	findOneBy(@Param('args') args: FindOptionsWhere<Data>): Promise<Data | null> {
 		return this.dataService.findOneBy(args);
 	}
 
 	@Delete()
 	remove(@Param('arg') arg: FindOptionsWhere<Data>): Promise<Data> {
-		return this.dataService.removeData(arg);
+		return this.dataService.remove(arg);
 	}
 }

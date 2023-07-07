@@ -8,9 +8,6 @@ import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { DataRepository } from './data/data.repository';
-import { DataSource } from 'typeorm';
-import { DataService } from './data/data.service';
-import { DataResolver } from './data/data.resolver';
 import { Data } from './data/data.entity';
 
 @Module({

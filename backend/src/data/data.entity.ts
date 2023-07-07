@@ -12,7 +12,7 @@ export class Data {
 		this.verified = verified;
 	}
 
-	@PrimaryGeneratedColumn('uuid')
+	@PrimaryGeneratedColumn()
 	id: number | undefined;
 
 	@Column('int')

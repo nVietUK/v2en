@@ -7,11 +7,12 @@ import {
 import { Md5 } from 'ts-md5';
 import { Controller, Get } from '@nestjs/common';
 import { DataService } from './data.service';
+import { mainDataService } from './data.module';
 
 @Controller('data')
 @ValidatorConstraint({ async: true })
 export class IsDataExistedConstraint implements ValidatorConstraintInterface {
-	constructor(private dataRepository: DataService = new DataService()) {}
+	constructor(private dataRepository: DataService = mainDataService) {}
 
 	@Get(':hashValue')
 	validate(value: string) {

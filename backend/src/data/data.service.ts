@@ -5,24 +5,26 @@ import { DataRepository } from './data.repository';
 
 @Injectable()
 export class DataService {
-	constructor(private readonly dataRepository: DataRepository = new DataRepository()) {}
+	constructor(private readonly dataRepository: DataRepository) {}
 
 	async findAll(): Promise<Data[]> {
 		return await this.dataRepository.find();
 	}
 
-	async findOneBy(args: FindOptionsWhere<Data>): Promise<Data> {
+	async findOneBy(args: FindOptionsWhere<Data>): Promise<Data | null> {
 		return await this.dataRepository.findOneBy(args);
 	}
 
-	async createData(createDataInput: DeepPartial<Data>): Promise<Data> {
-		const data = this.dataRepository.create(createDataInput);
+	async create(createDataInput: DeepPartial<Data>): Promise<Data> {
+		const data = await this.dataRepository.createData(createDataInput);
 		return await this.dataRepository.save(data);
 	}
 
-	async removeData(arg: FindOptionsWhere<Data>): Promise<Data> {
+	async remove(arg: FindOptionsWhere<Data>): Promise<Data> {
 		const data = await this.findOneBy(arg);
-		await this.dataRepository.remove(data);
+		if (data) {
+			await this.dataRepository.removeData(data);
+		}
 		return new Data('', '', '', false);
 	}
 }

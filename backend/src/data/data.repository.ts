@@ -4,32 +4,26 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class DataRepository extends Repository<Data> {
-	constructor(
-		dataSource: DataSource = new DataSource({
-			connectorPackage: 'mysql2',
-			type: 'mysql',
-			name: 'default',
-		}),
-	) {
+	constructor(private dataSource: DataSource) {
 		super(Data, dataSource.createEntityManager());
 	}
 
 	async findAll(): Promise<Data[]> {
-		return await this.find();
+		return await this.dataSource.manager.find(Data);
 	}
 
-	async findOneBy(args: FindOptionsWhere<Data>): Promise<Data> {
-		return await this.findOneBy(args);
+	async findOneBy(args: FindOptionsWhere<Data>): Promise<Data | null> {
+		return await this.dataSource.manager.findOneBy(Data, args);
 	}
 
 	async createData(createDataInput: DeepPartial<Data>): Promise<Data> {
-		const data = this.create(createDataInput);
+		const data = this.dataSource.manager.create(Data, createDataInput);
 		return await this.save(data);
 	}
 
 	async removeData(arg: FindOptionsWhere<Data>): Promise<Data> {
 		const data = await this.findOneBy(arg);
-		await this.remove(data);
+		await this.dataSource.manager.remove(Data, data);
 		return new Data('', '', '', false);
 	}
 }
