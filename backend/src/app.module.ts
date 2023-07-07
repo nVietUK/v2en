@@ -28,6 +28,8 @@ export const myConnectionOptions = async (
 
 @Module({
 	imports: [
+		UserModule,
+		DataModule,
 		ConfigModule.forRoot({
 			isGlobal: true,
 		}),
@@ -36,8 +38,6 @@ export const myConnectionOptions = async (
 			useFactory: myConnectionOptions,
 			inject: [ConfigService],
 		}),
-		UserModule,
-		DataModule,
 		GraphQLModule.forRoot<ApolloDriverConfig>({
 			autoSchemaFile: 'schema.gql',
 			driver: ApolloDriver,
