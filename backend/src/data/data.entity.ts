@@ -1,6 +1,7 @@
 import { Field, InputType, ObjectType } from '@nestjs/graphql';
 import { Md5 } from 'ts-md5';
 import { Column, Entity, PrimaryColumn, PrimaryGeneratedColumn } from 'typeorm';
+import { IsDataExistedByHashValue } from './data.validator';
 
 function dataDecorator(target: any) {
 	target.hashValue = Md5.hashStr(
@@ -40,6 +41,7 @@ export class Data {
 	translator: string;
 
 	@Column('longtext', { nullable: false })
+	@IsDataExistedByHashValue()
 	hashValue: string;
 
 	@Column({ default: false })

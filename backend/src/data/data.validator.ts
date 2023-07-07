@@ -25,10 +25,14 @@ export class IsDataExistedByHashValueConstraint implements ValidatorConstraintIn
 	constructor(private readonly connection: DataService) {}
 
 	async validate(value: any): Promise<boolean> {
-		return await this.createQueryBuilder(value);
+		const result = await this.createQueryBuilder(value);
+		if (typeof result == 'boolean') {
+			return result;
+		}
+		return false;
 	}
 
-	private createQueryBuilder(value: any) {
-		return !this.connection.findOneBy({ hashValue: value });
+	private async createQueryBuilder(value: any) {
+		return await this.connection.findOneBy({ hashValue: value });
 	}
 }
