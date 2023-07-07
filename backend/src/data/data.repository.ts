@@ -2,7 +2,6 @@ import { DeepPartial, FindOptionsWhere, Repository } from 'typeorm';
 import { Data } from './data.entity';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ValidationOptions, registerDecorator } from 'class-validator';
 
 @Injectable()
 export class DataRepository {
@@ -37,21 +36,4 @@ export class DataRepository {
 	async save(saveData: DeepPartial<Data>): Promise<Data> {
 		return await this.dataSource.manager.save(Data, saveData);
 	}
-
-	async validate(value: string) {
-		const isExited = await this.dataSource.findOneBy({ hashValue: value });
-		return !isExited;
-	}
-}
-
-export function IsDataExisted(validationOptions?: ValidationOptions) {
-	return function (object: any, propertyName: string) {
-		registerDecorator({
-			name: 'IsDataExisted',
-			target: object.constructor,
-			propertyName: propertyName,
-			options: validationOptions,
-			validator: DataRepository,
-		});
-	};
 }

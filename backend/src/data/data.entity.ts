@@ -2,15 +2,25 @@ import { Field, InputType, ObjectType } from '@nestjs/graphql';
 import { Md5 } from 'ts-md5';
 import { Column, Entity, PrimaryColumn, PrimaryGeneratedColumn } from 'typeorm';
 
+function dataDecorator(target: any) {
+	target.hashValue = Md5.hashStr(
+		`${target.origin} ${target.translated} ${target.translator}`,
+	).toString();
+}
+
 @Entity()
 @ObjectType('DataObject')
 @InputType('DataInput')
+@dataDecorator
 export class Data {
 	constructor(origin = '', translated = '', translator = '', verified = false) {
 		this.origin = origin;
 		this.translated = translated;
 		this.translator = translator;
 		this.verified = verified;
+		this.hashValue = Md5.hashStr(
+			`${this.origin} ${this.translated} ${this.translator}`,
+		).toString();
 	}
 
 	@PrimaryGeneratedColumn()
@@ -30,9 +40,7 @@ export class Data {
 	translator: string;
 
 	@Column('longtext', { nullable: false })
-	get hashValue(): string {
-		return Md5.hashStr(`${this.origin} ${this.translated} ${this.translator}`);
-	}
+	hashValue: string;
 
 	@Column({ default: false })
 	@Field(() => Boolean, { description: 'confirm that data is verified by authorizer' })
