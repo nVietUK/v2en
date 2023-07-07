@@ -28,7 +28,7 @@ export class DataResolver {
 
 	@Mutation(() => Data)
 	async addData(@Args('newData') newData: Data): Promise<Data> {
-		const data = await this.dataService.create(newData);
+		const data = await this.dataService.createData(newData);
 
 		pubSub.publish('dataAdded', { dataAdded: data });
 		return data;

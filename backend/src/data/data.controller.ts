@@ -8,7 +8,7 @@ export class DataController {
 	constructor(private dataService: DataService) {}
 	@Post()
 	create(@Body() newData: Data): Promise<Data> {
-		return this.dataService.create(newData);
+		return this.dataService.createData(newData);
 	}
 
 	@Get()
@@ -23,6 +23,6 @@ export class DataController {
 
 	@Delete()
 	remove(@Param('arg') arg: FindOptionsWhere<Data>): Promise<Data> {
-		return this.dataService.remove(arg);
+		return this.dataService.removeData(arg);
 	}
 }
