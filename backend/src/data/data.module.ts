@@ -4,10 +4,12 @@ import { DataService } from './data.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Data } from './data.entity';
 import { DataResolver } from './data.resolver';
+import { IsDataExistedByHashValueConstraint } from './data.validator';
+import { Validator } from 'class-validator';
 
 @Module({
 	controllers: [DataController],
-	providers: [DataService, DataResolver],
+	providers: [DataService, DataResolver, IsDataExistedByHashValueConstraint, Validator],
 	imports: [TypeOrmModule.forFeature([Data])],
 })
 export class DataModule {}

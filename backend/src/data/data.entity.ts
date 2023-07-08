@@ -19,9 +19,6 @@ export class Data {
 		this.translated = translated;
 		this.translator = translator;
 		this.verified = verified;
-		this.hashValue = Md5.hashStr(
-			`${this.origin} ${this.translated} ${this.translator}`,
-		).toString();
 	}
 
 	@PrimaryGeneratedColumn()
@@ -41,8 +38,15 @@ export class Data {
 	translator: string;
 
 	@Column('longtext', { nullable: false })
-	@IsDataExistedByHashValue()
-	hashValue: string;
+	@IsDataExistedByHashValue({ message: 'hashValue is exited' })
+	get hashValue(): string {
+		return Md5.hashStr(
+			`${this.origin} ${this.translated} ${this.translator}`,
+		).toString();
+	}
+	set hashValue(value: string) {
+		value;
+	}
 
 	@Column({ default: false })
 	@Field(() => Boolean, { description: 'confirm that data is verified by authorizer' })
