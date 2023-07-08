@@ -5,35 +5,39 @@ import { UserModule } from './user/user.module';
 import { DataModule } from './data/data.module';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { DataRepository } from './data/data.repository';
 import { Data } from './data/data.entity';
+
+export const myConnectionOptions = async (
+	configService: ConfigService,
+): Promise<TypeOrmModuleOptions> => {
+	return {
+		type: 'mysql',
+		host: configService.get('DB_HOST'),
+		port: configService.get('DB_PORT'),
+		username: configService.get('DB_USERNAME'),
+		password: configService.get('DB_PASSWORD'),
+		database: configService.get('DB_NAME'),
+		synchronize: true,
+		logging: true,
+		autoLoadEntities: true,
+		entities: [Data],
+	};
+};
 
 @Module({
 	imports: [
+		UserModule,
+		DataModule,
 		ConfigModule.forRoot({
 			isGlobal: true,
 		}),
 		TypeOrmModule.forRootAsync({
 			imports: [ConfigModule],
-			useFactory: async (configService: ConfigService) => ({
-				type: 'mysql',
-				host: configService.get('DB_HOST'),
-				port: configService.get('DB_PORT'),
-				username: configService.get('DB_USERNAME'),
-				password: configService.get('DB_PASSWORD'),
-				database: configService.get('DB_NAME'),
-				synchronize: true,
-				logging: true,
-				autoLoadEntities: true,
-				entities: [Data],
-			}),
+			useFactory: myConnectionOptions,
 			inject: [ConfigService],
 		}),
-		TypeOrmModule.forFeature([DataRepository]),
-		UserModule,
-		DataModule,
 		GraphQLModule.forRoot<ApolloDriverConfig>({
 			autoSchemaFile: 'schema.gql',
 			driver: ApolloDriver,

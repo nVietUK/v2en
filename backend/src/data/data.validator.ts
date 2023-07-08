@@ -1,9 +1,11 @@
 import {
-	registerDecorator,
 	ValidationOptions,
 	ValidatorConstraint,
 	ValidatorConstraintInterface,
+	registerDecorator,
 } from 'class-validator';
+import { DataService } from './data.service';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 
 export function IsDataExistedByHashValue(validationOptions?: ValidationOptions) {
 	return function (object: any, propertyName: string) {
@@ -17,16 +19,16 @@ export function IsDataExistedByHashValue(validationOptions?: ValidationOptions) 
 	};
 }
 
-@ValidatorConstraint({ async: true })
+@ValidatorConstraint({ async: true, name: 'IsDataExistedByHashValueConstraint' })
+@Injectable()
 export class IsDataExistedByHashValueConstraint implements ValidatorConstraintInterface {
-	constructor(private connection: any) {}
+	constructor(
+		@Inject(forwardRef(() => DataService))
+		private readonly dataService: DataService,
+	) {}
 
-	async validate(value: any): Promise<boolean> {
-		return await this.createQueryBuilder(value);
-	}
-
-	private createQueryBuilder(value: any) {
-		// return !this.connection.manager.findOneBy(Data, { hashValue: value });
-		return true;
+	async validate(value: any) {
+		const result = await this.dataService.findOneBy({ hashValue: value });
+		return result == null;
 	}
 }

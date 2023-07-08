@@ -10,8 +10,7 @@
 			"name": "Attach NestJS WS",
 			"port": 9229,
 			"restart": true,
-			"stopOnEntry": false,
-			"protocol": "inspector"
+			"sourceMaps": true
 		}
 	]
 }

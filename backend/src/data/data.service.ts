@@ -1,30 +1,39 @@
-import { Injectable } from '@nestjs/common';
-import { DeepPartial, FindOptionsWhere } from 'typeorm';
+import { DeepPartial, FindOptionsWhere, Repository } from 'typeorm';
 import { Data } from './data.entity';
-import { DataRepository } from './data.repository';
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 
 @Injectable()
 export class DataService {
-	constructor(private readonly dataRepository: DataRepository) {}
+	constructor(
+		@InjectRepository(Data)
+		private dataSource: Repository<Data>,
+	) {}
 
 	async findAll(): Promise<Data[]> {
-		return await this.dataRepository.find();
+		return await this.dataSource.manager.find(Data);
 	}
 
 	async findOneBy(args: FindOptionsWhere<Data>): Promise<Data | null> {
-		return await this.dataRepository.findOneBy(args);
+		return await this.dataSource.manager.findOneBy(Data, args);
 	}
 
-	async create(createDataInput: DeepPartial<Data>): Promise<Data> {
-		const data = await this.dataRepository.createData(createDataInput);
-		return await this.dataRepository.save(data);
+	async createData(createDataInput: DeepPartial<Data>): Promise<Data> {
+		const data = this.dataSource.manager.create(Data, createDataInput);
+		return await this.dataSource.manager.save(Data, data);
 	}
 
-	async remove(arg: FindOptionsWhere<Data>): Promise<Data> {
+	async removeData(arg: FindOptionsWhere<Data>): Promise<Data> {
 		const data = await this.findOneBy(arg);
-		if (data) {
-			await this.dataRepository.removeData(data);
-		}
+		await this.dataSource.manager.remove(Data, data);
 		return new Data('', '', '', false);
+	}
+
+	async find(): Promise<Data[]> {
+		return await this.dataSource.manager.find(Data);
+	}
+
+	async save(saveData: DeepPartial<Data>): Promise<Data> {
+		return await this.dataSource.manager.save(Data, saveData);
 	}
 }

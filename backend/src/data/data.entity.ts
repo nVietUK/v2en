@@ -1,6 +1,7 @@
 import { Field, InputType, ObjectType } from '@nestjs/graphql';
 import { Md5 } from 'ts-md5';
 import { Column, Entity, PrimaryColumn, PrimaryGeneratedColumn } from 'typeorm';
+import { IsDataExistedByHashValue } from './data.validator';
 
 function dataDecorator(target: any) {
 	target.hashValue = Md5.hashStr(
@@ -18,9 +19,6 @@ export class Data {
 		this.translated = translated;
 		this.translator = translator;
 		this.verified = verified;
-		this.hashValue = Md5.hashStr(
-			`${this.origin} ${this.translated} ${this.translator}`,
-		).toString();
 	}
 
 	@PrimaryGeneratedColumn()
@@ -40,7 +38,15 @@ export class Data {
 	translator: string;
 
 	@Column('longtext', { nullable: false })
-	hashValue: string;
+	@IsDataExistedByHashValue({ message: 'hashValue is exited' })
+	get hashValue(): string {
+		return Md5.hashStr(
+			`${this.origin} ${this.translated} ${this.translator}`,
+		).toString();
+	}
+	set hashValue(value: string) {
+		value;
+	}
 
 	@Column({ default: false })
 	@Field(() => Boolean, { description: 'confirm that data is verified by authorizer' })
