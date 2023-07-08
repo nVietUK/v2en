@@ -8,6 +8,7 @@ type DataObject {
 
   """the translated of sentence"""
   translated: String!
+  object: String!
 
   """the sentence's translator"""
   translator: String!
@@ -24,6 +25,7 @@ input DataInput {
 
   """the translated of sentence"""
   translated: String! = ""
+  object: String! = "origin: \ntranslated: "
 
   """the sentence's translator"""
   translator: String! = ""

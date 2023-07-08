@@ -33,6 +33,11 @@ export class Data {
 	@Field(() => String, { description: 'the translated of sentence' })
 	translated: string;
 
+	@Field(() => String)
+	get object() {
+		return `origin: ${this.origin}\ntranslated: ${this.translated}`;
+	}
+
 	@Column('longtext')
 	@Field(() => String, { description: "the sentence's translator" })
 	translator: string;
