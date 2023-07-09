@@ -25,7 +25,7 @@ input DataInput {
 
   """the translated of sentence"""
   translated: String! = ""
-  object: String! = "origin: \ntranslated: "
+  object: String! = "origin: ;  translated: "
 
   """the sentence's translator"""
   translator: String! = ""

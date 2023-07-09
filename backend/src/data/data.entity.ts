@@ -35,7 +35,7 @@ export class Data {
 
 	@Field(() => String)
 	get object() {
-		return `origin: ${this.origin}\ntranslated: ${this.translated}`;
+		return `origin: ${this.origin};  translated: ${this.translated}`;
 	}
 
 	@Column('longtext')
