@@ -1,11 +1,10 @@
-import { Field, InputType, ObjectType } from '@nestjs/graphql';
+import { ObjectType } from '@nestjs/graphql';
 import { Md5 } from 'ts-md5';
 import { Column, Entity, PrimaryColumn, PrimaryGeneratedColumn } from 'typeorm';
 import { IsDataExistedByHashValue } from './data.validator';
 
 @Entity()
 @ObjectType('DataObject')
-@InputType('DataInput')
 export class Data {
 	constructor(origin = '', translated = '', translator = '', verified = false) {
 		this.origin = origin;
@@ -18,21 +17,13 @@ export class Data {
 	@PrimaryColumn('int')
 	id?: number;
 
-	@Field(() => String, { description: 'the origin of sentence' })
 	@Column('longtext')
 	origin: string;
 
 	@Column('longtext')
-	@Field(() => String, { description: 'the translated of sentence' })
 	translated: string;
 
-	@Field(() => String)
-	get object() {
-		return `origin: ${this.origin};  translated: ${this.translated}`;
-	}
-
 	@Column('longtext')
-	@Field(() => String, { description: "the sentence's translator" })
 	translator: string;
 
 	@Column('longtext', { nullable: false })
@@ -47,6 +38,5 @@ export class Data {
 	}
 
 	@Column({ default: false })
-	@Field(() => Boolean, { description: 'confirm that data is verified by authorizer' })
 	verified: boolean;
 }

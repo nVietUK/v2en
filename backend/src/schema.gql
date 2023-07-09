@@ -3,37 +3,12 @@
 # ------------------------------------------------------
 
 type DataObject {
-  """the origin of sentence"""
+  id: Float
   origin: String!
-
-  """the translated of sentence"""
   translated: String!
-  object: String!
-
-  """the sentence's translator"""
   translator: String!
-
-  """confirm that data is verified by authorizer"""
-  verified: Boolean!
-  id: Float
   hashValue: String!
-}
-
-input DataInput {
-  """the origin of sentence"""
-  origin: String! = ""
-
-  """the translated of sentence"""
-  translated: String! = ""
-  object: String! = "origin: ;  translated: "
-
-  """the sentence's translator"""
-  translator: String! = ""
-
-  """confirm that data is verified by authorizer"""
-  verified: Boolean! = false
-  id: Float
-  hashValue: String! = "23b58def11b45727d3351702515f86af"
+  verified: Boolean!
 }
 
 type Query {
@@ -43,6 +18,20 @@ type Query {
 
 type Mutation {
   addData(newData: DataInput!): DataObject!
+}
+
+input DataInput {
+  """the origin of sentence"""
+  origin: String! = ""
+
+  """the translated of sentence"""
+  translated: String! = ""
+
+  """the sentence's translator"""
+  translator: String! = ""
+
+  """confirm that data is verified by authorizer"""
+  verified: Boolean! = false
 }
 
 type Subscription {

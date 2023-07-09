@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Data } from './data.entity';
 import { DataResolver } from './data.resolver';
 import { IsDataExistedByHashValueConstraint } from './data.validator';
+import { DataInput } from './data.dto';
 
 @Module({
 	controllers: [DataController],
