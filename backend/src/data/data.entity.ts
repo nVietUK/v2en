@@ -3,16 +3,9 @@ import { Md5 } from 'ts-md5';
 import { Column, Entity, PrimaryColumn, PrimaryGeneratedColumn } from 'typeorm';
 import { IsDataExistedByHashValue } from './data.validator';
 
-function dataDecorator(target: any) {
-	target.hashValue = Md5.hashStr(
-		`${target.origin} ${target.translated} ${target.translator}`,
-	).toString();
-}
-
 @Entity()
 @ObjectType('DataObject')
 @InputType('DataInput')
-@dataDecorator
 export class Data {
 	constructor(origin = '', translated = '', translator = '', verified = false) {
 		this.origin = origin;
