@@ -7,7 +7,6 @@ import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { Data } from './data/data.entity';
 import { join } from 'path';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
 
@@ -24,7 +23,6 @@ export const myConnectionOptions = async (
 		synchronize: true,
 		logging: true,
 		autoLoadEntities: true,
-		entities: [Data],
 	};
 };
 
@@ -43,9 +41,6 @@ export const myConnectionOptions = async (
 		GraphQLModule.forRoot<ApolloDriverConfig>({
 			autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
 			driver: ApolloDriver,
-			formatError: (error) => ({
-				message: error.message,
-			}),
 			playground: false,
 			plugins: [ApolloServerPluginLandingPageLocalDefault()],
 			installSubscriptionHandlers: true,

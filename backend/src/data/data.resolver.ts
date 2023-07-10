@@ -3,6 +3,7 @@ import { DataService } from './data.service';
 import { NotFoundException } from '@nestjs/common';
 import { Data } from './data.entity';
 import { PubSub } from 'graphql-subscriptions';
+import { DataInput } from './data.dto';
 
 const pubSub = new PubSub();
 
@@ -27,11 +28,17 @@ export class DataResolver {
 	}
 
 	@Mutation(() => Data)
-	async addData(@Args('newData') newData: Data): Promise<Data> {
-		const data = await this.dataService.createData(newData);
-
-		pubSub.publish('dataAdded', { dataAdded: data });
-		return data;
+	async addData(
+		@Args('newData') newData: DataInput,
+	): Promise<Data | unknown> {
+		try {
+			let data = await Data.fromDataInput(newData, this.dataService);
+			data = await this.dataService.createData(data);
+			pubSub.publish('dataAdded', { dataAdded: data });
+			return data;
+		} catch (e) {
+			return e;
+		}
 	}
 
 	@Subscription(() => Data)
