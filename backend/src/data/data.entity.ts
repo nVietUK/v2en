@@ -6,7 +6,12 @@ import { IsDataExistedByHashValue } from './data.validator';
 @Entity()
 @ObjectType('DataObject')
 export class Data {
-	constructor(origin = '', translated = '', translator = '', verified = false) {
+	constructor(
+		origin = '',
+		translated = '',
+		translator = '',
+		verified = false,
+	) {
 		this.origin = origin;
 		this.translated = translated;
 		this.translator = translator;

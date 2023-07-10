@@ -2,21 +2,39 @@ import { Field, InputType } from '@nestjs/graphql';
 
 @InputType('DataInput')
 export class DataInput {
-	constructor(origin = '', translated = '', translator = '', verified = false) {
+	constructor(
+		origin = '',
+		translated = '',
+		translator = '',
+		verified = false,
+	) {
 		this.origin = origin;
 		this.translated = translated;
 		this.translator = translator;
 		this.verified = verified;
 	}
-	@Field(() => String, { description: 'the origin of sentence' })
+
+	@Field(() => String, {
+		nullable: false,
+		description: 'the origin of sentence',
+	})
 	origin: string;
 
-	@Field(() => String, { description: 'the translated of sentence' })
+	@Field(() => String, {
+		nullable: false,
+		description: 'the translated of sentence',
+	})
 	translated: string;
 
-	@Field(() => String, { description: "the sentence's translator" })
+	@Field(() => String, {
+		nullable: false,
+		description: "the sentence's translator",
+	})
 	translator: string;
 
-	@Field(() => Boolean, { description: 'confirm that data is verified by authorizer' })
+	@Field(() => Boolean, {
+		defaultValue: false,
+		description: 'confirm that data is verified by authorizer',
+	})
 	verified: boolean;
 }

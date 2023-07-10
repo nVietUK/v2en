@@ -7,7 +7,9 @@ import {
 import { DataService } from './data.service';
 import { Inject, Injectable, forwardRef } from '@nestjs/common';
 
-export function IsDataExistedByHashValue(validationOptions?: ValidationOptions) {
+export function IsDataExistedByHashValue(
+	validationOptions?: ValidationOptions,
+) {
 	return function (object: any, propertyName: string) {
 		registerDecorator({
 			target: object.constructor,
@@ -20,7 +22,9 @@ export function IsDataExistedByHashValue(validationOptions?: ValidationOptions) 
 
 @ValidatorConstraint({ async: true })
 @Injectable()
-export class IsDataExistedByHashValueConstraint implements ValidatorConstraintInterface {
+export class IsDataExistedByHashValueConstraint
+	implements ValidatorConstraintInterface
+{
 	constructor(
 		@Inject(forwardRef(() => DataService))
 		private readonly dataService: DataService,

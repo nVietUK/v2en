@@ -2,6 +2,29 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+type UserObject {
+  id: Float
+  username: String!
+  familyName: String!
+  givenName: String!
+  birthDay: DateTime
+  gender: String
+  hashedPassword: String!
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type UserOutput {
+  username: String!
+  familyName: String!
+  givenName: String!
+  gender: String!
+  birthDay: DateTime!
+}
+
 type DataObject {
   id: Float
   origin: String!
@@ -17,7 +40,17 @@ type Query {
 }
 
 type Mutation {
+  addUser(newUser: UserInput!): UserOutput!
   addData(newData: DataInput!): DataObject!
+}
+
+input UserInput {
+  username: String! = ""
+  familyName: String! = ""
+  givenName: String! = ""
+  birthDay: DateTime! = "1899-12-30T16:53:30.000Z"
+  gender: String! = ""
+  password: String!
 }
 
 input DataInput {

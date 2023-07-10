@@ -18,12 +18,14 @@ export class DataController {
 	}
 
 	@Get()
-	findOneBy(@Param('args') args: FindOptionsWhere<DataInput>): Promise<Data | null> {
+	findOneBy(
+		@Param('args') args: FindOptionsWhere<DataInput>,
+	): Promise<Data | null> {
 		return this.dataService.findOneBy(args);
 	}
 
 	@Delete()
-	remove(@Param('arg') arg: FindOptionsWhere<DataInput>): Promise<Data> {
+	remove(@Param('arg') arg: FindOptionsWhere<DataInput>): Promise<void> {
 		return this.dataService.removeData(arg);
 	}
 }

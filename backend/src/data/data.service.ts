@@ -23,10 +23,9 @@ export class DataService {
 		return await this.dataSource.manager.save(Data, data);
 	}
 
-	async removeData(arg: FindOptionsWhere<Data>): Promise<Data> {
+	async removeData(arg: FindOptionsWhere<Data>): Promise<void> {
 		const data = await this.findOneBy(arg);
 		await this.dataSource.manager.remove(Data, data);
-		return new Data('', '', '', false);
 	}
 
 	async find(): Promise<Data[]> {
