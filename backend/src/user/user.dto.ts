@@ -1,7 +1,7 @@
 import { Field, InputType, ObjectType } from '@nestjs/graphql';
 import { User } from './user.entity';
 import { Entity } from 'typeorm';
-import { IsUserNameExisted } from './user.validator';
+import { IsPasswordCorrent, IsUserNameExisted } from './user.validator';
 
 @InputType('UserInput')
 export class UserInput {
@@ -35,7 +35,10 @@ export class UserInput {
 	@Field(() => String, { nullable: false })
 	gender?: string;
 
-	// TODO: password validation
+	@IsPasswordCorrent({
+		message:
+			'The password must have the minimum length 8 with at leat a special character and more than 3 number',
+	})
 	@Field(() => String, { nullable: false })
 	password?: string;
 }

@@ -1,3 +1,4 @@
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import {
 	ValidationArguments,
 	ValidationOptions,
@@ -6,7 +7,6 @@ import {
 	registerDecorator,
 } from 'class-validator';
 import { UserService } from './user.service';
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
 
 export function IsUserNameExisted(validationOptions?: ValidationOptions) {
 	return function (object: any, propertyName: string) {
@@ -31,5 +31,36 @@ export class IsUserNameExistedConstraint
 
 	async validate(value: any): Promise<boolean> {
 		return (await this.userService.findOneBy({ username: value })) == null;
+	}
+}
+
+export function IsPasswordCorrent(validationOptions?: ValidationOptions) {
+	return function (object: any, propertyName: string) {
+		registerDecorator({
+			target: object.constructor,
+			propertyName,
+			options: validationOptions,
+			validator: IsPasswordCorrentConstraint,
+		});
+	};
+}
+
+@ValidatorConstraint({ async: true })
+@Injectable()
+export class IsPasswordCorrentConstraint
+	implements ValidatorConstraintInterface
+{
+	constructor() {
+		this.specialCharacter = /^[^a-zA-Z0-9]+$/;
+	}
+
+	private specialCharacter;
+
+	async validate(value: string): Promise<boolean> {
+		return (
+			value.length > 8 &&
+			this.specialCharacter.test(value) &&
+			value.replace(/[^0-9]/g, '').length > 3
+		);
 	}
 }
