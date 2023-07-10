@@ -4,7 +4,6 @@ import { Column, Entity, PrimaryColumn, PrimaryGeneratedColumn } from 'typeorm';
 import { DataInput } from './data.dto';
 import { Injectable } from '@nestjs/common';
 import { DataService } from './data.service';
-import { ApolloServerErrorCode } from '@apollo/server/errors';
 import { GraphQLError } from 'graphql';
 
 @Entity()
