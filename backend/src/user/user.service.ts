@@ -1,4 +1,4 @@
-import { DeepPartial, FindOptionsWhere, Repository } from 'typeorm';
+import { FindOptionsWhere, Repository } from 'typeorm';
 import { User } from './user.entity';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -14,7 +14,7 @@ export class UserService {
 		return await this.dataSource.manager.findOneBy(User, args);
 	}
 
-	async createUser(createUserInput: DeepPartial<User>): Promise<User> {
+	async createUser(createUserInput: User): Promise<User> {
 		const data = this.dataSource.manager.create(User, createUserInput);
 		return await this.dataSource.manager.save(User, data);
 	}

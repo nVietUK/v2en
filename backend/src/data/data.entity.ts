@@ -1,21 +1,38 @@
 import { ObjectType } from '@nestjs/graphql';
 import { Md5 } from 'ts-md5';
 import { Column, Entity, PrimaryColumn, PrimaryGeneratedColumn } from 'typeorm';
-import { IsDataExistedByHashValue } from './data.validator';
+import { DataInput } from './data.dto';
+import { Injectable } from '@nestjs/common';
+import { DataService } from './data.service';
+import { ApolloServerErrorCode } from '@apollo/server/errors';
+import { GraphQLError } from 'graphql';
 
 @Entity()
 @ObjectType('DataObject')
+@Injectable()
 export class Data {
 	constructor(
 		origin = '',
 		translated = '',
 		translator = '',
 		verified = false,
+		dataService: DataService,
 	) {
 		this.origin = origin;
 		this.translated = translated;
 		this.translator = translator;
 		this.verified = verified;
+		this.validate(dataService);
+	}
+
+	static fromDataInput(data: DataInput, dataService: DataService) {
+		return new Data(
+			data.origin,
+			data.translated,
+			data.translator,
+			data.verified,
+			dataService,
+		);
 	}
 
 	@PrimaryGeneratedColumn()
@@ -32,7 +49,6 @@ export class Data {
 	translator: string;
 
 	@Column('longtext', { nullable: false })
-	@IsDataExistedByHashValue({ message: 'hashValue is existed' })
 	get hashValue(): string {
 		return Md5.hashStr(
 			`${this.origin} ${this.translated} ${this.translator}`,
@@ -44,4 +60,17 @@ export class Data {
 
 	@Column({ default: false })
 	verified: boolean;
+
+	private validate(dataService: DataService) {
+		const result = dataService?.findOneBy({
+			hashValue: this.hashValue,
+		});
+		if (result != null) {
+			throw new GraphQLError('Data is existed', {
+				extensions: {
+					code: 'BAD_USER_INPUT',
+				},
+			});
+		}
+	}
 }
