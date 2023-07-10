@@ -15,23 +15,24 @@ export class Data {
 		translated = '',
 		translator = '',
 		verified = false,
-		dataService: DataService,
 	) {
 		this.origin = origin;
 		this.translated = translated;
 		this.translator = translator;
 		this.verified = verified;
-		this.validate(dataService);
 	}
 
-	static fromDataInput(data: DataInput, dataService: DataService) {
-		return new Data(
+	static async fromDataInput(data: DataInput, dataService?: DataService) {
+		const ndata = new Data(
 			data.origin,
 			data.translated,
 			data.translator,
 			data.verified,
-			dataService,
 		);
+		if (dataService) {
+			await ndata.validate(dataService);
+		}
+		return ndata;
 	}
 
 	@PrimaryGeneratedColumn()
@@ -60,8 +61,8 @@ export class Data {
 	@Column({ default: false })
 	verified: boolean;
 
-	private validate(dataService: DataService) {
-		const result = dataService?.findOneBy({
+	private async validate(dataService: DataService) {
+		const result = await dataService?.findOneBy({
 			hashValue: this.hashValue,
 		});
 		if (result != null) {

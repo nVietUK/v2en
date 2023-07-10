@@ -32,7 +32,7 @@ export class DataResolver {
 		@Args('newData') newData: DataInput,
 	): Promise<Data | unknown> {
 		try {
-			let data = Data.fromDataInput(newData, this.dataService);
+			let data = await Data.fromDataInput(newData, this.dataService);
 			data = await this.dataService.createData(data);
 			pubSub.publish('dataAdded', { dataAdded: data });
 			return data;
