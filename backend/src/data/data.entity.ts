@@ -32,7 +32,7 @@ export class Data {
 	translator: string;
 
 	@Column('longtext', { nullable: false })
-	@IsDataExistedByHashValue({ message: 'hashValue is exited' })
+	@IsDataExistedByHashValue({ message: 'hashValue is existed' })
 	get hashValue(): string {
 		return Md5.hashStr(
 			`${this.origin} ${this.translated} ${this.translator}`,
