@@ -1,7 +1,6 @@
 import { Args, Mutation, Query, Resolver, Subscription } from '@nestjs/graphql';
 import { User } from './user.entity';
 import { UserService } from './user.service';
-import { NotFoundException } from '@nestjs/common';
 import { UserInput, UserOutput } from './user.dto';
 import { PubSub } from 'graphql-subscriptions';
 

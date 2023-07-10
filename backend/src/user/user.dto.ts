@@ -1,6 +1,7 @@
 import { Field, InputType, ObjectType } from '@nestjs/graphql';
 import { User } from './user.entity';
 import { Entity } from 'typeorm';
+import { IsUserNameExisted } from './user.validator';
 
 @InputType('UserInput')
 export class UserInput {
@@ -18,6 +19,7 @@ export class UserInput {
 		this.birthDay = birthDay;
 	}
 
+	@IsUserNameExisted({ message: 'username is existed' })
 	@Field(() => String, { nullable: false })
 	username: string;
 
