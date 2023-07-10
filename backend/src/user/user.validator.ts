@@ -50,17 +50,9 @@ export function IsPasswordCorrent(validationOptions?: ValidationOptions) {
 export class IsPasswordCorrentConstraint
 	implements ValidatorConstraintInterface
 {
-	constructor() {
-		this.specialCharacter = /^[^a-zA-Z0-9]+$/;
-	}
-
-	private specialCharacter;
+	constructor() {}
 
 	async validate(value: string): Promise<boolean> {
-		return (
-			value.length > 8 &&
-			this.specialCharacter.test(value) &&
-			value.replace(/[^0-9]/g, '').length > 3
-		);
+		return value.length > 8 && value.replace(/[^0-9]/g, '').length > 3;
 	}
 }

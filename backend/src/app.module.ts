@@ -41,9 +41,6 @@ export const myConnectionOptions = async (
 		GraphQLModule.forRoot<ApolloDriverConfig>({
 			autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
 			driver: ApolloDriver,
-			formatError: (error) => ({
-				message: error.message,
-			}),
 			playground: false,
 			plugins: [ApolloServerPluginLandingPageLocalDefault()],
 			installSubscriptionHandlers: true,
