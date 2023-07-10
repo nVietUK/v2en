@@ -33,8 +33,12 @@ const linksList = [
     title: 'Github',
     caption: 'github.com/takahashinguyen',
     icon: 'code',
-    link: '/',
   },
+  {
+    title: 'Login',
+    icon: '',
+    link: '/login',
+  }
 ];
 
 export default defineComponent({
