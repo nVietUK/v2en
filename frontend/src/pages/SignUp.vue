@@ -139,15 +139,17 @@ export default defineComponent({
       try {
         const variables = {
           newUser: {
-            username: username,
-            familyName: lastName,
-            givenName: firstName,
-            gender: gender,
-            birthDay: birthday,
-            password: password,
+            username: username.value,
+            familyName: lastName.value,
+            givenName: firstName.value,
+            gender: gender.value,
+            birthDay: birthday.value,
+            password: password.value,
           },
         };
-        execute(variables);
+        await execute(variables);
+
+        console.log(data.value.addUser);
       } catch (error) {
         console.error(error);
       }

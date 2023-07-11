@@ -19,6 +19,11 @@ export class UserResolver {
 		return UserOutput.fromUser(data);
 	}
 
+	@Mutation(() => UserOutput)
+	async checkUser(@Args('inputUser') inputUser: UserInput): Promise<UserOutput> {
+		const data = await this.dataService.findOneBy({username: inputUser.username})
+	}
+
 	@Subscription(() => User)
 	dataAdded() {
 		return pubSub.asyncIterator('dataAdded');
