@@ -11,7 +11,7 @@ export class User {
 		familyName = '',
 		givenName = '',
 		gender = '',
-		birthDay: Date = new Date(0, 0, 0),
+		birthDay: string = new Date(0, 0, 0).toISOString(),
 		password = '',
 	) {
 		this.username = username;
@@ -46,7 +46,7 @@ export class User {
 	givenName: string;
 
 	@Column('date')
-	birthDay?: Date;
+	birthDay?: string;
 
 	@Column('text')
 	gender?: string;

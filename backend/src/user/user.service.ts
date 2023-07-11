@@ -10,8 +10,8 @@ export class UserService {
 		private dataSource: Repository<User>,
 	) {}
 
-	async findOneBy(args: FindOptionsWhere<User>): Promise<User | null> {
-		return await this.dataSource.manager.findOneBy(User, args);
+	async findOneBy(args: FindOptionsWhere<User>): Promise<User> {
+		return await this.dataSource.manager.findOneBy(User, args) ?? new User();
 	}
 
 	async createUser(createUserInput: User): Promise<User> {

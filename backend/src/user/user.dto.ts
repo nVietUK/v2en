@@ -29,8 +29,14 @@ export class UserInput {
 	@Field(() => String, { nullable: false })
 	givenName: string;
 
-	@Field(() => Date, { nullable: false })
-	birthDay?: Date;
+	private _birthDay!: string;
+	@Field(() => Date)
+	get birthDay(): string {
+		return this._birthDay
+	};
+	set birthDay(value: Date) {
+		this._birthDay = value.toISOString();
+	}
 
 	@Field(() => String, { nullable: false })
 	gender?: string;
@@ -41,6 +47,25 @@ export class UserInput {
 	})
 	@Field(() => String, { nullable: false })
 	password?: string;
+}
+
+@InputType('LoginInput')
+export class LoginInput {
+	constructor(
+		username = '',
+	) {
+		this.username = username;
+	}
+
+	@Field(() => String, { nullable: false })
+	username: string;
+
+	@IsPasswordCorrent({
+		message:
+			'The password must have the minimum length 8 with at leat a special character and more than 3 number',
+	})
+	@Field(() => String, { nullable: false })
+	password!: string;
 }
 
 @Entity()
@@ -66,7 +91,7 @@ export class UserOutput {
 			user.familyName,
 			user.givenName,
 			user.gender,
-			user.birthDay,
+			new Date(user.birthDay ?? '0/0/0'),
 		);
 	}
 

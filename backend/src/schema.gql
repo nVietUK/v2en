@@ -7,15 +7,10 @@ type UserObject {
   username: String!
   familyName: String!
   givenName: String!
-  birthDay: DateTime
+  birthDay: String
   gender: String
   hashedPassword: String!
 }
-
-"""
-A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
-"""
-scalar DateTime
 
 type UserOutput {
   username: String!
@@ -24,6 +19,11 @@ type UserOutput {
   gender: String!
   birthDay: DateTime!
 }
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
 
 type DataObject {
   id: Float
@@ -41,6 +41,7 @@ type Query {
 
 type Mutation {
   addUser(newUser: UserInput!): UserOutput!
+  checkUser(loginUser: LoginInput!): UserOutput!
   addData(newData: DataInput!): DataObject!
 }
 
@@ -48,8 +49,13 @@ input UserInput {
   username: String! = ""
   familyName: String! = ""
   givenName: String! = ""
-  birthDay: DateTime! = "1899-12-30T16:53:30.000Z"
+  birthDay: DateTime!
   gender: String! = ""
+  password: String!
+}
+
+input LoginInput {
+  username: String! = ""
   password: String!
 }
 
