@@ -15,6 +15,7 @@
   "dependencies": {
     "@quasar/extras": "^1.16.4",
     "axios": "^1.4.0",
+    "graphql-tag": "^2.12.6",
     "quasar": "^2.6.0",
     "villus": "^3.1.0",
     "vue": "^3.0.0",
