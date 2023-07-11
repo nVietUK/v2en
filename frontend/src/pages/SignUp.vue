@@ -138,7 +138,14 @@ export default defineComponent({
     const submitForm = async () => {
       try {
         const variables = {
-          
+          newUser: {
+            username: username,
+            familyName: lastName,
+            givenName: firstName,
+            gender: gender,
+            birthDay: birthday,
+            password: password,
+          },
         };
         execute(variables);
       } catch (error) {
