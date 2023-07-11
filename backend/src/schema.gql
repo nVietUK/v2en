@@ -65,7 +65,7 @@ input UserInput {
 
 input LoginInput {
   username: String! = ""
-  password: String!
+  password: String! = ""
 }
 
 input DataInput {

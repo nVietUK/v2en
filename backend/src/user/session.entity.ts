@@ -12,7 +12,7 @@ export class Session {
     @PrimaryGeneratedColumn()
     id!: number;
 
-    @Column()
+    @Column('longtext')
     token!: string;
 
     @ManyToOne(() => User, user => user.sessions)

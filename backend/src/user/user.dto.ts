@@ -53,8 +53,14 @@ export class UserInput {
 export class LoginInput {
 	constructor(
 		username = '',
+		password = ''
 	) {
 		this.username = username;
+		this.password = password
+	}
+
+	static fromUserInput(user: UserInput) {
+		return new LoginInput(user.username, user.password);
 	}
 
 	@Field(() => String, { nullable: false })
@@ -65,7 +71,7 @@ export class LoginInput {
 			'The password must have the minimum length 8 with at leat a special character and more than 3 number',
 	})
 	@Field(() => String, { nullable: false })
-	password!: string;
+	password: string;
 }
 
 @Entity()

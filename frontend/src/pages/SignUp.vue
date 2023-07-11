@@ -118,6 +118,7 @@ const SIGN_UP_MUTATION = gql`
       givenName
       gender
       birthDay
+      token
     }
   }
 `;

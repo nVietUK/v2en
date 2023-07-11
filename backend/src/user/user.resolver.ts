@@ -14,12 +14,12 @@ export class UserResolver {
 	constructor(private readonly userService: UserService, private jwtService: JwtService) { }
 
 	@Mutation(() => UserOutput)
-	async addUser(@Args('newUser') newUser: UserInput): Promise<UserOutput> {
+	async addUser(@Args('newUser') newUser: UserInput): Promise<UserOutput | Error> {
 		const data = await this.userService.createUser(
 			User.fromUserInput(newUser),
 		);
 		pubSub.publish('dataAdded', { dataAdded: data });
-		return UserOutput.fromUser(data);
+		return this.LogIn(LoginInput.fromUserInput(newUser))
 	}
 
 	@Mutation(() => UserOutput)
