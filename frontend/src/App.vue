@@ -6,11 +6,13 @@
 import { useClient } from 'villus';
 import { defineComponent } from 'vue';
 
+const graphqlUrl = 'http://[::1]:3000/graphql';
+
 export default defineComponent({
   name: 'App',
   setup() {
     useClient({
-      url: '/graphql', // your endpoint.
+      url: graphqlUrl, // your endpoint.
     });
   },
 });
