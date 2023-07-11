@@ -6,6 +6,7 @@ import {
   createWebHistory,
 } from 'vue-router';
 import routes from './routes';
+import { useClient } from 'villus';
 
 /*
  * If not building with SSR mode, you can
@@ -19,7 +20,9 @@ import routes from './routes';
 export default route(function (/* { store, ssrContext } */) {
   const createHistory = process.env.SERVER
     ? createMemoryHistory
-    : (process.env.VUE_ROUTER_MODE === 'history' ? createWebHistory : createWebHashHistory);
+    : process.env.VUE_ROUTER_MODE === 'history'
+    ? createWebHistory
+    : createWebHashHistory;
 
   return createRouter({
     scrollBehavior: () => ({ left: 0, top: 0 }),
@@ -33,3 +36,8 @@ export default route(function (/* { store, ssrContext } */) {
     ),
   });
 });
+
+export const client = useClient({
+  url: 'http://[::1]:3000/graphql', // your endpoint.
+});
+console.log(client);

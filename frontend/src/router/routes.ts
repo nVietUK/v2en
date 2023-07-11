@@ -3,11 +3,11 @@ import { RouteRecordRaw } from 'vue-router';
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    component: () => import('layouts/MainLayout.vue'),
+    component: () => import('../layouts/MainLayout.vue'),
     children: [
-      { path: '', component: () => import('pages/IndexPage.vue') },
-      { path: '/login', component: () => import('pages/Login.vue') },
-      { path: '/signup', component: () => import('pages/SignUp.vue') },
+      { path: '', component: () => import('../pages/IndexPage.vue') },
+      { path: '/login', component: () => import('../pages/LogIn.vue') },
+      { path: '/signup', component: () => import('../pages/SignUp.vue') },
     ],
   },
 
