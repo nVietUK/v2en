@@ -1,7 +1,8 @@
 import { ObjectType } from '@nestjs/graphql';
 import { Md5 } from 'ts-md5';
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { UserInput } from './user.dto';
+import { Session } from './session.entity';
 
 @Entity()
 @ObjectType('UserObject')
@@ -56,4 +57,7 @@ export class User {
 	set password(value: string) {
 		this.hashedPassword = Md5.hashStr(value);
 	}
+
+	@OneToMany(() => Session, session => session.user)
+	sessions!: Session[];
 }

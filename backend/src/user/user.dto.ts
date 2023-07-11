@@ -77,21 +77,24 @@ export class UserOutput {
 		givenName = '',
 		gender = '',
 		birthDay: Date = new Date(0, 0, 0),
+		token: string = ''
 	) {
 		this.username = username;
 		this.familyName = familyName;
 		this.givenName = givenName;
 		this.gender = gender;
 		this.birthDay = birthDay;
+		this.token = token;
 	}
 
-	static fromUser(user: User) {
+	static fromUser(user: User, token?: string) {
 		return new UserOutput(
 			user.username,
 			user.familyName,
 			user.givenName,
 			user.gender,
 			new Date(user.birthDay ?? '0/0/0'),
+			token
 		);
 	}
 
@@ -109,4 +112,7 @@ export class UserOutput {
 
 	@Field()
 	birthDay: Date;
+
+	@Field()
+	token: string;
 }

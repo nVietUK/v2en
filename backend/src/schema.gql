@@ -2,6 +2,12 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+type Session {
+  id: Float!
+  token: String!
+  user: UserObject!
+}
+
 type UserObject {
   id: Float
   username: String!
@@ -10,6 +16,7 @@ type UserObject {
   birthDay: String
   gender: String
   hashedPassword: String!
+  sessions: [Session!]!
 }
 
 type UserOutput {
@@ -18,6 +25,7 @@ type UserOutput {
   givenName: String!
   gender: String!
   birthDay: DateTime!
+  token: String!
 }
 
 """
@@ -41,7 +49,8 @@ type Query {
 
 type Mutation {
   addUser(newUser: UserInput!): UserOutput!
-  checkUser(loginUser: LoginInput!): UserOutput!
+  LogIn(loginUser: LoginInput!): UserOutput!
+  LogOut(logoutUser: String!, token: String!): UserOutput!
   addData(newData: DataInput!): DataObject!
 }
 
