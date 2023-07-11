@@ -1,9 +1,9 @@
 <template>
   <q-page class="justify-center">
-    <div class="login-page center-of-parent">
-      <div class="login-form">
-        <h1 class="login-title">Welcome back!</h1>
-        <h2 class="login-subtitle">We're so excited to see you again!</h2>
+    <div class="account-page center-of-parent">
+      <div class="account-form">
+        <h1 class="account-title">Welcome back!</h1>
+        <h2 class="account-subtitle">We're so excited to see you again!</h2>
         <form @submit.prevent="submitForm">
           <div class="form-group">
             <label for="emailOrUsername" class="form-label"

@@ -5,23 +5,22 @@
   transform: translate(-50%, -50%);
 }
 
-.login-form {
-  max-width: 400px;
-  width: 100%;
+.account-form {
+  width: 500px;
   padding: 40px;
   background-color: #36393f;
   border-radius: 8px;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
 }
 
-.login-title {
+.account-title {
   margin: 0 0 0 0;
   font-size: 36px;
   font-weight: bold;
   color: #fff;
 }
 
-.login-subtitle {
+.account-subtitle {
   margin-top: 0;
   font-size: 18px;
   font-weight: normal;
@@ -42,6 +41,7 @@
 
 .form-control {
   display: block;
+  height: 40px;
   width: 100%;
   padding: 10px;
   font-size: 16px;
@@ -122,4 +122,55 @@
 
 .forgot-password a:hover {
   text-decoration: underline;
+}
+
+.form-check {
+  display: block;
+  margin-top: -10px;
+  margin-bottom: 10px;
+}
+
+.form-check-input {
+  position: relative;
+  margin-top: 0.3rem;
+  margin-left: -1.25rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  background-color: #fff;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  border: 1px solid #ccc;
+  border-radius: 0.25rem;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.form-check-input:focus {
+  border-color: #7289da;
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(114, 137, 218, 0.25);
+}
+
+.checkmark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 0.25rem;
+}
+
+.form-check-input:checked ~ .checkmark {
+  background-color: #7289da;
+  border-color: #7289da;
+}
+
+.form-check-label {
+  display: inline-block;
+  margin-left: 1.5rem;
+  font-size: 14px;
+  font-weight: bold;
+  color: #fff;
 }
