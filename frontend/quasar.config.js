@@ -8,11 +8,9 @@ module.exports = configure(function (/* ctx */) {
       errors: true,
     },
 
-    boot: [
-      'axios',
-    ],
+    boot: ['axios'],
 
-    css: ['app.scss'],
+    css: [],
 
     extras: [
       'roboto-font', // optional, you are not bound to it
