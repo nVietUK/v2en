@@ -17,7 +17,7 @@
     "axios": "^1.4.0",
     "graphql": "^14.7.0",
     "graphql-tag": "^2.12.6",
-    "quasar": "^2.6.0",
+    "quasar": "^2.12.2",
     "villus": "^1.0.0-alpha.4",
     "vue": "^3.0.0",
     "vue-router": "^4.0.0"

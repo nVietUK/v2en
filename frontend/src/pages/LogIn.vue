@@ -17,7 +17,6 @@
 import { defineComponent, ref } from 'vue';
 import gql from 'graphql-tag';
 import { useMutation } from 'villus';
-import { client } from 'src/App.vue';
 
 const LOGIN_MUTATION = gql`
   mutation signUp($username: String!, $email: String!, $password: String!) {

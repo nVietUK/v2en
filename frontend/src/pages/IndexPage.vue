@@ -10,7 +10,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import ReadMeViewer from 'components/ReadMeViewer.vue';
+import ReadMeViewer from '../components/ReadMeViewer.vue';
 export default defineComponent({
   name: 'IndexPage',
   components: {

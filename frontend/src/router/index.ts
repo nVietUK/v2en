@@ -6,7 +6,6 @@ import {
   createWebHistory,
 } from 'vue-router';
 import routes from './routes';
-import { useClient } from 'villus';
 
 /*
  * If not building with SSR mode, you can
@@ -36,8 +35,3 @@ export default route(function (/* { store, ssrContext } */) {
     ),
   });
 });
-
-export const client = useClient({
-  url: 'http://[::1]:3000/graphql', // your endpoint.
-});
-console.log(client);
