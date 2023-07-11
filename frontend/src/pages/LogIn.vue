@@ -1,15 +1,39 @@
 <template>
-  <q-page>
-    <q-form @submit.prevent="submitForm">
-      <q-input
-        v-model="emailOrUsername"
-        label="Email or Username"
-        type="text"
-        required
-      />
-      <q-input v-model="password" label="Password" type="password" required />
-      <q-btn type="submit" label="Login" />
-    </q-form>
+  <q-page class="justify-center">
+    <div class="login-page center-of-parent">
+      <div class="login-form">
+        <h1 class="login-title">Welcome back!</h1>
+        <h2 class="login-subtitle">We're so excited to see you again!</h2>
+        <form @submit.prevent="submitForm">
+          <div class="form-group">
+            <label for="emailOrUsername" class="form-label"
+              >Email or Phone</label
+            >
+            <input
+              id="emailOrUsername"
+              v-model="emailOrUsername"
+              type="text"
+              class="form-control"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="password" class="form-label">Password</label>
+            <input
+              id="password"
+              v-model="password"
+              type="password"
+              class="form-control"
+              required
+            />
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Login</button>
+        </form>
+        <div class="forgot-password">
+          <a href="#">Forgot your password?</a>
+        </div>
+      </div>
+    </div>
   </q-page>
 </template>
 
@@ -19,10 +43,9 @@ import gql from 'graphql-tag';
 import { useMutation } from 'villus';
 
 const LOGIN_MUTATION = gql`
-  mutation signUp($username: String!, $email: String!, $password: String!) {
-    signUp(username: $username, email: $email, password: $password) {
-      username
-      email
+  mutation Login($emailOrUsername: String!, $password: String!) {
+    login(emailOrUsername: $emailOrUsername, password: $password) {
+      token
     }
   }
 `;

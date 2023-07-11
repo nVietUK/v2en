@@ -1,17 +1,56 @@
 <template>
-  <q-page>
-    <q-form @submit.prevent="submitForm">
-      <q-input v-model="email" label="Email" type="email" required />
-      <q-input v-model="username" label="Username" type="text" required />
-      <q-input v-model="password" label="Password" type="password" required />
-      <q-checkbox
-        v-model="terms"
-        label="I agree to the terms and conditions"
-        required
-      />
-      <q-btn type="submit" label="Sign up" />
-    </q-form>
-  </q-page>
+  <div class="signup-page">
+    <div class="signup-form">
+      <h1 class="signup-title">Create an account</h1>
+      <form @submit.prevent="submitForm">
+        <div class="form-group">
+          <label for="email" class="form-label">Email</label>
+          <input
+            id="email"
+            v-model="email"
+            type="email"
+            class="form-control"
+            required
+          />
+        </div>
+        <div class="form-group">
+          <label for="username" class="form-label">Username</label>
+          <input
+            id="username"
+            v-model="username"
+            type="text"
+            class="form-control"
+            required
+          />
+        </div>
+        <div class="form-group">
+          <label for="password" class="form-label">Password</label>
+          <input
+            id="password"
+            v-model="password"
+            type="password"
+            class="form-control"
+            required
+          />
+        </div>
+        <div class="form-group">
+          <div class="form-check">
+            <input
+              id="terms"
+              v-model="terms"
+              type="checkbox"
+              class="form-check-input"
+              required
+            />
+            <label for="terms" class="form-check-label">
+              I agree to the terms and conditions
+            </label>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Sign up</button>
+      </form>
+    </div>
+  </div>
 </template>
 
 <script lang="ts">

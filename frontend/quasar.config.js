@@ -10,7 +10,7 @@ module.exports = configure(function (/* ctx */) {
 
     boot: ['axios'],
 
-    css: [],
+    css: ['AccountPage.scss'],
 
     extras: [
       'roboto-font', // optional, you are not bound to it

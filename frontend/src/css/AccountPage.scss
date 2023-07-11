@@ -1,0 +1,125 @@
+.center-of-parent {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.login-form {
+  max-width: 400px;
+  width: 100%;
+  padding: 40px;
+  background-color: #36393f;
+  border-radius: 8px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+}
+
+.login-title {
+  margin: 0 0 0 0;
+  font-size: 36px;
+  font-weight: bold;
+  color: #fff;
+}
+
+.login-subtitle {
+  margin-top: 0;
+  font-size: 18px;
+  font-weight: normal;
+  color: #fff;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #fff;
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #333;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.form-control:focus {
+  border-color: #7289da;
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(114, 137, 218, 0.25);
+}
+
+.btn {
+  display: inline-block;
+  font-weight: 400;
+  color: #fff;
+  text-align: center;
+  vertical-align: middle;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  background-color: #7289da;
+  border: 1px solid #7289da;
+  padding: 0.375rem 0.75rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  border-radius: 0.25rem;
+  transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out,
+    border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.btn:hover {
+  color: #fff;
+  background-color: #5a6cb2;
+  border-color: #5a6cb2;
+}
+
+.btn:focus {
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(114, 137, 218, 0.5);
+}
+
+.btn-primary {
+  background-color: #7289da;
+  border-color: #7289da;
+}
+
+.btn-primary:hover {
+  background-color: #5a6cb2;
+  border-color: #5a6cb2;
+}
+
+.btn-primary:focus {
+  box-shadow: 0 0 0 0.2rem rgba(114, 137, 218, 0.5);
+}
+
+.btn-block {
+  display: block;
+  width: 100%;
+}
+
+.forgot-password {
+  margin-top: 20px;
+  font-size: 14px;
+  color: #333;
+}
+
+.forgot-password a {
+  color: #7289da;
+  text-decoration: none;
+}
+
+.forgot-password a:hover {
+  text-decoration: underline;
+}
