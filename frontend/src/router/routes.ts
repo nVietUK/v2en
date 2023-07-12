@@ -1,7 +1,5 @@
+import { inject } from 'vue';
 import { RouteRecordRaw } from 'vue-router';
-import useAuth from '../script/useAuth';
-
-const { isLoggedIn } = useAuth();
 
 const routes: RouteRecordRaw[] = [
   {
@@ -12,27 +10,23 @@ const routes: RouteRecordRaw[] = [
       {
         path: '/profile',
         component: () => import('../pages/UserPage.vue'),
-        beforeEnter: (to, from, next) => {
-          if (isLoggedIn.value) {
-            next();
-          } else {
-            next('/login');
-          }
+        beforeEnter: async (to, from, next) => {
+          localStorage.getItem('token') ? next() : next('/login');
         },
         props: true,
       },
       {
         path: '/login',
         component: () => import('../pages/LogIn.vue'),
-        beforeEnter: (to, from, next) => {
-          isLoggedIn.value ? next('/profile') : next();
+        beforeEnter: async (to, from, next) => {
+          localStorage.getItem('token') ? next('/profile') : next();
         },
       },
       {
         path: '/signup',
         component: () => import('../pages/SignUp.vue'),
-        beforeEnter: (to, from, next) => {
-          isLoggedIn.value ? next('/profile') : next();
+        beforeEnter: async (to, from, next) => {
+          localStorage.getItem('token') ? next('/profile') : next();
         },
       },
     ],
