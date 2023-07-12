@@ -63,7 +63,7 @@ export default defineComponent({
     const emailOrUsername = ref('');
     const password = ref('');
 
-    const { execute } = useMutation(LOGIN_MUTATION, {});
+    const { execute } = useMutation(LOGIN_MUTATION);
 
     const submitForm = async () => {
       try {

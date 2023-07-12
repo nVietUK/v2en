@@ -26,7 +26,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, onMounted, ref } from 'vue';
+import { defineComponent, ref } from 'vue';
 import EssentialLink from '../components/EssentialLink.vue';
 import gql from 'graphql-tag';
 import { useMutation } from 'villus';
@@ -80,7 +80,7 @@ export default defineComponent({
         const response = await execute(variables);
         return response.data.checkToken;
       } catch (error) {
-        console.error(error);
+        return '';
       }
     };
 

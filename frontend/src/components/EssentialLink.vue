@@ -43,7 +43,7 @@ export default defineComponent({
     },
 
     user: {
-      type: Object,
+      type: [Object, String],
       required: true,
     },
   },

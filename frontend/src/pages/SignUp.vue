@@ -4,16 +4,6 @@
       <div class="account-form">
         <h1 class="account-title">Create an account</h1>
         <form @submit.prevent="submitForm">
-          <div class="form-group">
-            <label for="email" class="form-label">Email</label>
-            <input
-              id="email"
-              v-model="email"
-              type="email"
-              class="form-control"
-              required
-            />
-          </div>
           <div class="form-group row">
             <div class="col">
               <label for="first-name" class="form-label">First Name</label>
@@ -109,6 +99,7 @@
 import { defineComponent, ref } from 'vue';
 import { useMutation } from 'villus';
 import gql from 'graphql-tag';
+import { useRouter } from 'vue-router';
 
 const SIGN_UP_MUTATION = gql`
   mutation AddUser($newUser: UserInput!) {
@@ -125,6 +116,7 @@ const SIGN_UP_MUTATION = gql`
 
 export default defineComponent({
   setup() {
+    const router = useRouter();
     const email = ref('');
     const username = ref('');
     const password = ref('');
@@ -134,7 +126,7 @@ export default defineComponent({
     const gender = ref('');
     const birthday = ref('');
 
-    const { data, execute } = useMutation(SIGN_UP_MUTATION);
+    const { execute } = useMutation(SIGN_UP_MUTATION, {});
 
     const submitForm = async () => {
       try {
@@ -148,9 +140,17 @@ export default defineComponent({
             password: password.value,
           },
         };
-        await execute(variables);
+        const response = await execute(variables);
 
-        console.log(data.value.addUser);
+        const user = response.data.addUser;
+        localStorage.setItem('token', user.token);
+
+        router.push({
+          path: '/profile',
+          params: {
+            user: user,
+          },
+        });
       } catch (error) {
         console.error(error);
       }
