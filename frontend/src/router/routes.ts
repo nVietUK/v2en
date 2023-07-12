@@ -25,9 +25,6 @@ const routes: RouteRecordRaw[] = [
         path: '/login',
         component: () => import('../pages/LogIn.vue'),
         beforeEnter: (to, from, next) => {
-          const previousProps = from.params;
-          to.params = previousProps;
-
           isLoggedIn.value ? next('/profile') : next();
         },
       },
@@ -35,9 +32,6 @@ const routes: RouteRecordRaw[] = [
         path: '/signup',
         component: () => import('../pages/SignUp.vue'),
         beforeEnter: (to, from, next) => {
-          const previousProps = from.params;
-          to.params = previousProps;
-
           isLoggedIn.value ? next('/profile') : next();
         },
       },

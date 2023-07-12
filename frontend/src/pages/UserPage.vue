@@ -1,9 +1,9 @@
 <template>
   <div class="user-profile">
     <div class="user-info">
-      <h2>{{ user.name }}</h2>
-      <p>Birthday: {{ user.birthday }}</p>
-      <p>Gender: {{ user.gender }}</p>
+      <h2>{{ userDisplay.name }}</h2>
+      <p>Birthday: {{ userDisplay.birthday }}</p>
+      <p>Gender: {{ userDisplay.gender }}</p>
     </div>
   </div>
 </template>
@@ -13,17 +13,17 @@ import { defineComponent } from 'vue';
 
 export default defineComponent({
   props: {
-    User: {
+    user: {
       type: Object,
       required: true,
     },
   },
   setup(props) {
     return {
-      user: {
-        name: props.User.name,
-        birthday: props.User.birthday,
-        gender: props.User.gender,
+      userDisplay: {
+        name: props.user['username'],
+        birthday: props.user['birthDay'],
+        gender: props.user['gender'],
       },
     };
   },

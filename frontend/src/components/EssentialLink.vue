@@ -3,7 +3,7 @@
     clickable
     tag="a"
     target="_blank"
-    @click="$router.push({ path: link, params: { user: user } })"
+    @click="$router.push({ path: link })"
   >
     <q-item-section v-if="icon" avatar>
       <q-icon :name="icon" />
@@ -40,11 +40,6 @@ export default defineComponent({
     icon: {
       type: String,
       default: '',
-    },
-
-    user: {
-      type: [Object, String],
-      required: true,
     },
   },
 });

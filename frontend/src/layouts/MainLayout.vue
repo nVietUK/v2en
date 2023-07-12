@@ -14,13 +14,12 @@
           v-for="link in essentialLinks"
           :key="link.title"
           v-bind="link"
-          :user="user"
         />
       </q-list>
     </q-drawer>
 
     <q-page-container>
-      <router-view />
+      <router-view :user="user" />
     </q-page-container>
   </q-layout>
 </template>
@@ -70,7 +69,7 @@ export default defineComponent({
 
   async setup() {
     const leftDrawerOpen = ref(false);
-    const { error, execute } = useMutation(TOKEN_MUTATION, {});
+    const { execute } = useMutation(TOKEN_MUTATION, {});
     const variables = {
       token: localStorage.getItem('token'),
     };
