@@ -51,6 +51,7 @@ type Mutation {
   addUser(newUser: UserInput!): UserOutput!
   LogIn(loginUser: LoginInput!): UserOutput!
   LogOut(logoutUser: String!, token: String!): UserOutput!
+  checkToken(token: String!): UserOutput!
   addData(newData: DataInput!): DataObject!
 }
 

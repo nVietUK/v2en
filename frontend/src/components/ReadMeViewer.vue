@@ -13,7 +13,6 @@ async function fetchContent(url: string): Promise<string> {
 import { defineComponent, onMounted, ref } from 'vue';
 
 export default defineComponent({
-  name: 'ReadMeViewer',
   props: {
     url: {
       type: String,

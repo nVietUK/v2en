@@ -25,7 +25,7 @@ export class UserResolver {
 	@Mutation(() => UserOutput)
 	async LogIn(@Args('loginUser') loginUser: LoginInput): Promise<UserOutput | Error> {
 		const user = await this.userService.findOneBy({ username: loginUser.username, hashedPassword: Md5.hashStr(loginUser.password) });
-		if (user != new User()) {
+		if (user instanceof User) {
 			const token = await this.jwtService.signAsync({ id: user.id, username: user.username, birthday: user.birthDay })
 			const session = new Session(token, user);
 			await this.userService.createSession(session);
@@ -37,11 +37,25 @@ export class UserResolver {
 	@Mutation(() => UserOutput)
 	async LogOut(@Args('logoutUser') username: string, @Args('token') token: string) {
 		const user = await this.userService.findOneBy({ username: username });
-		const session = await this.userService.findSession({ user: user, token: token })
-		if (session) {
-			this.userService.removeSession(session)
+		if (user instanceof User) {
+			const session = await this.userService.findSession({ user: user, token: token });
+			if (session) {
+				this.userService.removeSession(session)
+			}
 		}
 		return Error('User already logged out.')
+	}
+
+	@Mutation(() => UserOutput)
+	async checkToken(@Args('token') token: string): Promise<UserOutput | Error> {
+		const session = await this.userService.findSession({ token: token });
+		if (session) {
+			const user = await this.userService.findOneBy({ id: session.id });
+			if (user instanceof User) {
+				return UserOutput.fromUser(user, token)
+			}
+		}
+		return Error('Invalid token')
 	}
 
 	@Subscription(() => User)

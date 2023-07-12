@@ -1,5 +1,5 @@
 <template>
-  <q-layout view="hHh lpR lff">
+  <q-layout view="hhh lpr lff">
     <q-header reveal bordered class="bg-primary text-white">
       <q-toolbar>
         <q-btn dense flat round icon="menu" @click="toggleLeftDrawer" />
@@ -14,6 +14,7 @@
           v-for="link in essentialLinks"
           :key="link.title"
           v-bind="link"
+          :user="user"
         />
       </q-list>
     </q-drawer>
@@ -25,8 +26,10 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref } from 'vue';
+import { defineComponent, onMounted, ref } from 'vue';
 import EssentialLink from '../components/EssentialLink.vue';
+import gql from 'graphql-tag';
+import { useMutation } from 'villus';
 
 const linksList = [
   {
@@ -45,6 +48,19 @@ const linksList = [
   },
 ];
 
+const TOKEN_MUTATION = gql`
+  mutation CheckToken($token: String!) {
+    checkToken(token: $token) {
+      username
+      familyName
+      givenName
+      gender
+      birthDay
+      token
+    }
+  }
+`;
+
 export default defineComponent({
   name: 'MainLayout',
 
@@ -52,8 +68,23 @@ export default defineComponent({
     EssentialLink,
   },
 
-  setup() {
+  async setup() {
     const leftDrawerOpen = ref(false);
+    const { error, execute } = useMutation(TOKEN_MUTATION, {});
+    const variables = {
+      token: localStorage.getItem('token'),
+    };
+
+    const fetchData = async () => {
+      try {
+        const response = await execute(variables);
+        return response.data.checkToken;
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    const user = await fetchData();
 
     return {
       essentialLinks: linksList,
@@ -61,6 +92,7 @@ export default defineComponent({
       toggleLeftDrawer() {
         leftDrawerOpen.value = !leftDrawerOpen.value;
       },
+      user,
     };
   },
 });

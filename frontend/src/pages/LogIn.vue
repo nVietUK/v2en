@@ -41,10 +41,16 @@
 import { defineComponent, ref } from 'vue';
 import gql from 'graphql-tag';
 import { useMutation } from 'villus';
+import { useRouter } from 'vue-router';
 
 const LOGIN_MUTATION = gql`
-  mutation Login($emailOrUsername: String!, $password: String!) {
-    login(emailOrUsername: $emailOrUsername, password: $password) {
+  mutation AddUser($loginUser: LoginInput!) {
+    LogIn(loginUser: $loginUser) {
+      username
+      familyName
+      givenName
+      gender
+      birthDay
       token
     }
   }
@@ -53,18 +59,31 @@ const LOGIN_MUTATION = gql`
 export default defineComponent({
   name: 'LoginPage',
   setup() {
+    const router = useRouter();
     const emailOrUsername = ref('');
     const password = ref('');
 
-    const { data, execute } = useMutation(LOGIN_MUTATION, {});
+    const { execute } = useMutation(LOGIN_MUTATION, {});
 
     const submitForm = async () => {
       try {
         const variables = {
-          emailOrUsername: emailOrUsername.value,
-          password: password.value,
+          loginUser: {
+            username: emailOrUsername.value,
+            password: password.value,
+          },
         };
-        execute(variables);
+        const response = await execute(variables);
+
+        const user = response.data.LogIn;
+        localStorage.setItem('token', user.token);
+
+        router.push({
+          path: '/profile',
+          params: {
+            user: user,
+          },
+        });
       } catch (error) {
         console.error(error);
       }

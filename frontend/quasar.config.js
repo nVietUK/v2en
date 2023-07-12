@@ -8,7 +8,7 @@ module.exports = configure(function (/* ctx */) {
       errors: true,
     },
 
-    boot: ['axios'],
+    boot: [],
 
     css: ['AccountPage.scss'],
 
