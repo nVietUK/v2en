@@ -30,16 +30,19 @@ export default defineComponent({
     caption: {
       type: String,
       default: '',
+      optional: true,
     },
 
     link: {
       type: String,
       default: '#',
+      optional: true,
     },
 
     icon: {
       type: String,
       default: '',
+      optional: true,
     },
   },
 });

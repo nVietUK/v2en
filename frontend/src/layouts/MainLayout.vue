@@ -25,25 +25,8 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, provide, ref } from 'vue';
+import { defineComponent, ref } from 'vue';
 import EssentialLink from '../components/EssentialLink.vue';
-
-const linksList = [
-  {
-    title: 'Github',
-    caption: 'github.com/takahashinguyen',
-    icon: 'code',
-    link: '/',
-  },
-  {
-    title: 'Login',
-    link: '/login',
-  },
-  {
-    title: 'Signup',
-    link: '/signup',
-  },
-];
 
 export default defineComponent({
   name: 'MainLayout',
@@ -62,6 +45,27 @@ export default defineComponent({
   async setup(props) {
     const leftDrawerOpen = ref(false);
     const user = await props.userMutation();
+
+    const userLinks =
+      user instanceof Object
+        ? [
+            { title: 'Profile', link: '/profile' },
+            { title: 'LogOut', link: '/logout' },
+          ]
+        : [
+            { title: 'Login', link: '/login' },
+            { title: 'Signup', link: '/signup' },
+          ];
+
+    const linksList = [
+      {
+        title: 'Github',
+        caption: 'github.com/takahashinguyen',
+        icon: 'code',
+        link: '/',
+      },
+      ...userLinks,
+    ];
 
     return {
       essentialLinks: linksList,
