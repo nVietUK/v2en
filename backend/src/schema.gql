@@ -2,20 +2,22 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+type Session {
+  id: Float!
+  token: String!
+  user: UserObject!
+}
+
 type UserObject {
   id: Float
   username: String!
   familyName: String!
   givenName: String!
-  birthDay: DateTime
+  birthDay: String
   gender: String
   hashedPassword: String!
+  sessions: [Session!]!
 }
-
-"""
-A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
-"""
-scalar DateTime
 
 type UserOutput {
   username: String!
@@ -23,7 +25,13 @@ type UserOutput {
   givenName: String!
   gender: String!
   birthDay: DateTime!
+  token: String!
 }
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
 
 type DataObject {
   id: Float
@@ -41,6 +49,9 @@ type Query {
 
 type Mutation {
   addUser(newUser: UserInput!): UserOutput!
+  LogIn(loginUser: LoginInput!): UserOutput!
+  LogOut(logoutUser: String!, token: String!): UserOutput!
+  checkToken(token: String!): UserOutput!
   addData(newData: DataInput!): DataObject!
 }
 
@@ -48,9 +59,14 @@ input UserInput {
   username: String! = ""
   familyName: String! = ""
   givenName: String! = ""
-  birthDay: DateTime! = "1899-12-30T16:53:30.000Z"
+  birthDay: DateTime!
   gender: String! = ""
   password: String!
+}
+
+input LoginInput {
+  username: String! = ""
+  password: String! = ""
 }
 
 input DataInput {

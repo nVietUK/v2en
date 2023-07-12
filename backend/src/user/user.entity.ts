@@ -1,17 +1,18 @@
 import { ObjectType } from '@nestjs/graphql';
 import { Md5 } from 'ts-md5';
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, JoinTable, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { UserInput } from './user.dto';
+import { Session } from './session.entity';
 
-@Entity()
 @ObjectType('UserObject')
+@Entity()
 export class User {
 	constructor(
 		username = '',
 		familyName = '',
 		givenName = '',
 		gender = '',
-		birthDay: Date = new Date(0, 0, 0),
+		birthDay: string = new Date(0, 0, 0).toISOString(),
 		password = '',
 	) {
 		this.username = username;
@@ -46,7 +47,7 @@ export class User {
 	givenName: string;
 
 	@Column('date')
-	birthDay?: Date;
+	birthDay?: string;
 
 	@Column('text')
 	gender?: string;
@@ -56,4 +57,8 @@ export class User {
 	set password(value: string) {
 		this.hashedPassword = Md5.hashStr(value);
 	}
+
+	@OneToMany(() => Session, session => session.user, { cascade: true })
+	@JoinColumn({ name: 'user_id' })
+	sessions!: Session[];
 }

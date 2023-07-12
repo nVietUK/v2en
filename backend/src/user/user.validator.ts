@@ -7,6 +7,7 @@ import {
 	registerDecorator,
 } from 'class-validator';
 import { UserService } from './user.service';
+import { User } from './user.entity';
 
 export function IsUserNameExisted(validationOptions?: ValidationOptions) {
 	return function (object: any, propertyName: string) {
@@ -22,15 +23,14 @@ export function IsUserNameExisted(validationOptions?: ValidationOptions) {
 @ValidatorConstraint({ async: true })
 @Injectable()
 export class IsUserNameExistedConstraint
-	implements ValidatorConstraintInterface
-{
+	implements ValidatorConstraintInterface {
 	constructor(
 		@Inject(forwardRef(() => UserService))
 		private readonly userService: UserService,
-	) {}
+	) { }
 
 	async validate(value: any): Promise<boolean> {
-		return (await this.userService.findOneBy({ username: value })) == null;
+		return !((await this.userService.findOneBy({ username: value })) instanceof User);
 	}
 }
 
@@ -48,9 +48,8 @@ export function IsPasswordCorrent(validationOptions?: ValidationOptions) {
 @ValidatorConstraint({ async: true })
 @Injectable()
 export class IsPasswordCorrentConstraint
-	implements ValidatorConstraintInterface
-{
-	constructor() {}
+	implements ValidatorConstraintInterface {
+	constructor() { }
 
 	async validate(value: string): Promise<boolean> {
 		return value.length > 8 && value.replace(/[^0-9]/g, '').length > 3;

@@ -29,8 +29,14 @@ export class UserInput {
 	@Field(() => String, { nullable: false })
 	givenName: string;
 
-	@Field(() => Date, { nullable: false })
-	birthDay?: Date;
+	private _birthDay!: string;
+	@Field(() => Date)
+	get birthDay(): string {
+		return this._birthDay
+	};
+	set birthDay(value: Date) {
+		this._birthDay = value.toISOString();
+	}
 
 	@Field(() => String, { nullable: false })
 	gender?: string;
@@ -43,6 +49,31 @@ export class UserInput {
 	password?: string;
 }
 
+@InputType('LoginInput')
+export class LoginInput {
+	constructor(
+		username = '',
+		password = ''
+	) {
+		this.username = username;
+		this.password = password
+	}
+
+	static fromUserInput(user: UserInput) {
+		return new LoginInput(user.username, user.password);
+	}
+
+	@Field(() => String, { nullable: false })
+	username: string;
+
+	@IsPasswordCorrent({
+		message:
+			'The password must have the minimum length 8 with at leat a special character and more than 3 number',
+	})
+	@Field(() => String, { nullable: false })
+	password: string;
+}
+
 @Entity()
 @ObjectType('UserOutput')
 export class UserOutput {
@@ -52,21 +83,24 @@ export class UserOutput {
 		givenName = '',
 		gender = '',
 		birthDay: Date = new Date(0, 0, 0),
+		token: string = ''
 	) {
 		this.username = username;
 		this.familyName = familyName;
 		this.givenName = givenName;
 		this.gender = gender;
 		this.birthDay = birthDay;
+		this.token = token;
 	}
 
-	static fromUser(user: User) {
+	static fromUser(user: User, token?: string) {
 		return new UserOutput(
 			user.username,
 			user.familyName,
 			user.givenName,
 			user.gender,
-			user.birthDay,
+			new Date(user.birthDay ?? '0/0/0'),
+			token
 		);
 	}
 
@@ -84,4 +118,7 @@ export class UserOutput {
 
 	@Field()
 	birthDay: Date;
+
+	@Field()
+	token: string;
 }
