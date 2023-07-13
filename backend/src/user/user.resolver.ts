@@ -1,4 +1,4 @@
-import { Args, Mutation, Query, Resolver, Subscription } from '@nestjs/graphql';
+import { Args, Mutation, Resolver, Subscription } from '@nestjs/graphql';
 import { User } from './user.entity';
 import { UserService } from './user.service';
 import { LoginInput, UserInput, UserOutput } from './user.dto';
@@ -44,13 +44,14 @@ export class UserResolver {
 		return Error('Incorrect username or password.')
 	}
 
-	@Mutation(() => UserOutput)
-	async LogOut(@Args('logoutUser') username: string, @Args('token') token: string) {
+	@Mutation(() => String)
+	async LogOut(@Args('username') username: string, @Args('token') token: string) {
 		const user = await this.userService.findOneBy({ username: username });
 		if (user instanceof User) {
 			const session = await this.userService.findSession({ user: user, token: token });
 			if (session) {
 				this.userService.removeSession(session)
+				return 'Logged out'
 			}
 		}
 		return Error('User already logged out.')

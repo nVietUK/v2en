@@ -41,11 +41,15 @@ export default defineComponent({
       type: Function,
       required: true,
     },
+    logoutMutation: {
+      type: Function,
+      required: true,
+    },
   },
 
   async setup(props) {
     const leftDrawerOpen = ref(false);
-    const user = await props.userMutation();
+    const user = await props.userMutation(localStorage.getItem('token'));
 
     const userLinks =
       user instanceof Object
@@ -56,7 +60,14 @@ export default defineComponent({
                 router.push({ path: '/profile' });
               },
             },
-            { title: 'LogOut', link: '/logout' },
+            {
+              title: 'LogOut',
+              eFunction: async () => {
+                localStorage.removeItem('token');
+                await props.logoutMutation(user['username'], user['token']);
+                window.location.reload();
+              },
+            },
           ]
         : [
             {

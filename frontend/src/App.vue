@@ -1,6 +1,9 @@
 <template>
   <Suspense>
-    <router-view :userMutation="userMutation" />
+    <router-view
+      :userMutation="userMutation"
+      :logoutMutation="logoutMutation"
+    />
   </Suspense>
 </template>
 
@@ -24,20 +27,28 @@ const TOKEN_MUTATION = gql`
     }
   }
 `;
-const variables = {
-  token: localStorage.getItem('token'),
-};
+
+const LOGOUT_MUTATION = gql`
+  mutation LogOut($username: String!, $token: String!) {
+    LogOut(username: $username, token: $token)
+  }
+`;
+
 export default defineComponent({
   name: 'App',
   methods: {
-    async userMutation() {
+    async userMutation(token: string) {
       const { execute } = useMutation(TOKEN_MUTATION, {});
       try {
-        const response = await execute(variables);
+        const response = await execute({ token: token });
         return response.data.checkToken;
       } catch (error) {
         return '';
       }
+    },
+    async logoutMutation(username: string, token: string) {
+      const { execute } = useMutation(LOGOUT_MUTATION, {});
+      await execute({ username: username, token: token });
     },
   },
   setup() {

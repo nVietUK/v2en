@@ -41,7 +41,7 @@
 import { defineComponent, ref } from 'vue';
 import gql from 'graphql-tag';
 import { useMutation } from 'villus';
-import { useRouter } from 'vue-router';
+import router from 'src/router';
 
 const LOGIN_MUTATION = gql`
   mutation AddUser($loginUser: LoginInput!) {
@@ -57,9 +57,17 @@ const LOGIN_MUTATION = gql`
 `;
 
 export default defineComponent({
+  props: {
+    user: {
+      type: [Object, String],
+      required: true,
+    },
+  },
+
   name: 'LoginPage',
-  setup() {
-    const router = useRouter();
+  setup(props) {
+    if (props.user) router.push('/profile');
+
     const emailOrUsername = ref('');
     const password = ref('');
 
@@ -78,12 +86,7 @@ export default defineComponent({
         const user = response.data.LogIn;
         localStorage.setItem('token', user.token);
 
-        router.push({
-          path: '/profile',
-          params: {
-            user: user,
-          },
-        });
+        window.location.reload();
       } catch (error) {
         console.error(error);
       }
