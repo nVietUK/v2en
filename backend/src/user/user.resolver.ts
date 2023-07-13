@@ -10,9 +10,9 @@ import { JwtService } from '@nestjs/jwt';
 const pubSub = new PubSub();
 
 function generateRandomString(): string {
-	const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+	const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+\-=\[\]{};\:"\\|,.<>\/?';
 	let result = '';
-	for (let i = 0; i < 125; i++) {
+	for (let i = 0; i < 64; i++) {
 		const randomIndex = Math.floor(Math.random() * characters.length);
 		result += characters.charAt(randomIndex);
 	}
@@ -25,18 +25,18 @@ export class UserResolver {
 
 	@Mutation(() => UserOutput)
 	async addUser(@Args('newUser') newUser: UserInput): Promise<UserOutput | Error> {
-		const token = await this.jwtService.signAsync(newUser)
 		const data = await this.userService.createUser(
 			User.fromUserInput(newUser),
 		);
 		pubSub.publish('dataAdded', { dataAdded: data });
-		return this.LogIn(LoginInput.fromUserInput(newUser), token)
+		return this.LogIn(LoginInput.fromUserInput(newUser))
 	}
 
 	@Mutation(() => UserOutput)
-	async LogIn(@Args('loginUser') loginUser: LoginInput, token: string = generateRandomString()): Promise<UserOutput | Error> {
+	async LogIn(@Args('loginUser') loginUser: LoginInput): Promise<UserOutput | Error> {
 		const user = await this.userService.findOneBy({ username: loginUser.username, hashedPassword: Md5.hashStr(loginUser.password) });
 		if (user instanceof User) {
+			const token = await this.jwtService.signAsync({ ...user, str: generateRandomString() })
 			const session = new Session(token, user);
 			await this.userService.createSession(session);
 			return UserOutput.fromUser(user, token)
