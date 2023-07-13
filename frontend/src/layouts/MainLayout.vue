@@ -27,6 +27,7 @@
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
 import EssentialLink from '../components/EssentialLink.vue';
+import router from 'src/router';
 
 export default defineComponent({
   name: 'MainLayout',
@@ -49,12 +50,27 @@ export default defineComponent({
     const userLinks =
       user instanceof Object
         ? [
-            { title: 'Profile', link: '/profile' },
+            {
+              title: 'Profile',
+              eFunction: () => {
+                router.push({ path: '/profile' });
+              },
+            },
             { title: 'LogOut', link: '/logout' },
           ]
         : [
-            { title: 'Login', link: '/login' },
-            { title: 'Signup', link: '/signup' },
+            {
+              title: 'Login',
+              eFunction: () => {
+                router.push({ path: '/login' });
+              },
+            },
+            {
+              title: 'Signup',
+              eFunction: () => {
+                router.push({ path: '/signup' });
+              },
+            },
           ];
 
     const linksList = [
@@ -62,7 +78,6 @@ export default defineComponent({
         title: 'Github',
         caption: 'github.com/takahashinguyen',
         icon: 'code',
-        link: '/',
       },
       ...userLinks,
     ];
