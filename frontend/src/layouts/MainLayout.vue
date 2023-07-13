@@ -14,13 +14,12 @@
           v-for="link in essentialLinks"
           :key="link.title"
           v-bind="link"
-          :user="user"
         />
       </q-list>
     </q-drawer>
 
     <q-page-container>
-      <router-view />
+      <router-view :user="user" />
     </q-page-container>
   </q-layout>
 </template>
@@ -28,38 +27,7 @@
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
 import EssentialLink from '../components/EssentialLink.vue';
-import gql from 'graphql-tag';
-import { useMutation } from 'villus';
-
-const linksList = [
-  {
-    title: 'Github',
-    caption: 'github.com/takahashinguyen',
-    icon: 'code',
-    link: '/',
-  },
-  {
-    title: 'Login',
-    link: '/login',
-  },
-  {
-    title: 'Signup',
-    link: '/signup',
-  },
-];
-
-const TOKEN_MUTATION = gql`
-  mutation CheckToken($token: String!) {
-    checkToken(token: $token) {
-      username
-      familyName
-      givenName
-      gender
-      birthDay
-      token
-    }
-  }
-`;
+import router from 'src/router';
 
 export default defineComponent({
   name: 'MainLayout',
@@ -68,23 +36,62 @@ export default defineComponent({
     EssentialLink,
   },
 
-  async setup() {
+  props: {
+    userMutation: {
+      type: Function,
+      required: true,
+    },
+    logoutMutation: {
+      type: Function,
+      required: true,
+    },
+  },
+
+  async setup(props) {
     const leftDrawerOpen = ref(false);
-    const { error, execute } = useMutation(TOKEN_MUTATION, {});
-    const variables = {
-      token: localStorage.getItem('token'),
-    };
+    const user = await props.userMutation(localStorage.getItem('token'));
 
-    const fetchData = async () => {
-      try {
-        const response = await execute(variables);
-        return response.data.checkToken;
-      } catch (error) {
-        return '';
-      }
-    };
+    const userLinks =
+      user instanceof Object
+        ? [
+            {
+              title: 'Profile',
+              eFunction: () => {
+                router.push({ path: '/profile' });
+              },
+            },
+            {
+              title: 'LogOut',
+              eFunction: async () => {
+                localStorage.removeItem('token');
+                await props.logoutMutation(user['username'], user['token']);
+                window.location.reload();
+              },
+            },
+          ]
+        : [
+            {
+              title: 'Login',
+              eFunction: () => {
+                router.push({ path: '/login' });
+              },
+            },
+            {
+              title: 'Signup',
+              eFunction: () => {
+                router.push({ path: '/signup' });
+              },
+            },
+          ];
 
-    const user = await fetchData();
+    const linksList = [
+      {
+        title: 'Github',
+        caption: 'github.com/takahashinguyen',
+        icon: 'code',
+      },
+      ...userLinks,
+    ];
 
     return {
       essentialLinks: linksList,

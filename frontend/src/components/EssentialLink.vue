@@ -1,10 +1,5 @@
 <template>
-  <q-item
-    clickable
-    tag="a"
-    target="_blank"
-    @click="$router.push({ path: link, params: { user: user } })"
-  >
+  <q-item clickable tag="a" target="_blank" @click="eFunction()">
     <q-item-section v-if="icon" avatar>
       <q-icon :name="icon" />
     </q-item-section>
@@ -18,6 +13,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import router from 'src/router';
 
 export default defineComponent({
   name: 'EssentialLink',
@@ -30,21 +26,19 @@ export default defineComponent({
     caption: {
       type: String,
       default: '',
+      optional: true,
     },
 
-    link: {
-      type: String,
-      default: '#',
+    eFunction: {
+      type: Function,
+      default: () => router.push('/'),
+      optional: true,
     },
 
     icon: {
       type: String,
       default: '',
-    },
-
-    user: {
-      type: [Object, String],
-      required: true,
+      optional: true,
     },
   },
 });
