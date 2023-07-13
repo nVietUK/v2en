@@ -5,27 +5,17 @@ import { LoginInput, UserInput, UserOutput } from './user.dto';
 import { PubSub } from 'graphql-subscriptions';
 import { Md5 } from 'ts-md5';
 import { Session } from './session.entity';
-import { JwtService } from '@nestjs/jwt';
+import { TokenExpiredError } from 'jsonwebtoken';
 
 const pubSub = new PubSub();
 
-function generateRandomString(): string {
-	const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+\-=\[\]{};\:"\\|,.<>\/?';
-	let result = '';
-	for (let i = 0; i < 64; i++) {
-		const randomIndex = Math.floor(Math.random() * characters.length);
-		result += characters.charAt(randomIndex);
-	}
-	return result;
-}
-
 @Resolver(() => UserOutput)
 export class UserResolver {
-	constructor(private readonly userService: UserService, private jwtService: JwtService) { }
+	constructor(private readonly service: UserService) { }
 
 	@Mutation(() => UserOutput)
 	async addUser(@Args('newUser') newUser: UserInput): Promise<UserOutput | Error> {
-		const data = await this.userService.createUser(
+		const data = await this.service.createUser(
 			User.fromUserInput(newUser),
 		);
 		pubSub.publish('dataAdded', { dataAdded: data });
@@ -34,11 +24,11 @@ export class UserResolver {
 
 	@Mutation(() => UserOutput)
 	async LogIn(@Args('loginUser') loginUser: LoginInput): Promise<UserOutput | Error> {
-		const user = await this.userService.findOneBy({ username: loginUser.username, hashedPassword: Md5.hashStr(loginUser.password) });
+		const user = await this.service.findOneBy({ username: loginUser.username, hashedPassword: Md5.hashStr(loginUser.password) });
 		if (user instanceof User) {
-			const token = await this.jwtService.signAsync({ ...user, str: generateRandomString() })
+			const token = this.service.createToken(user)
 			const session = new Session(token, user);
-			await this.userService.createSession(session);
+			await this.service.createSession(session);
 			return UserOutput.fromUser(user, token)
 		}
 		return Error('Incorrect username or password.')
@@ -46,11 +36,11 @@ export class UserResolver {
 
 	@Mutation(() => String)
 	async LogOut(@Args('username') username: string, @Args('token') token: string) {
-		const user = await this.userService.findOneBy({ username: username });
+		const user = await this.service.findOneBy({ username: username });
 		if (user instanceof User) {
-			const session = await this.userService.findSession({ user: user, token: token });
+			const session = await this.service.findSession({ user: user, token: token });
 			if (session) {
-				this.userService.removeSession(session)
+				this.service.removeSession(session)
 				return 'Logged out'
 			}
 		}
@@ -59,10 +49,21 @@ export class UserResolver {
 
 	@Mutation(() => UserOutput)
 	async checkToken(@Args('token') token: string): Promise<UserOutput | Error> {
-		const session = await this.userService.findSession({ token: token });
+		const session = await this.service.findSession({ token: token });
 		if (session) {
-			const user = await this.userService.findOneBy({ id: session.user.id });
+			const user = await this.service.findOneBy({ id: session.user.id });
 			if (user instanceof User) {
+				try {
+					this.service.checkToken(token);
+				} catch (err) {
+					if (err instanceof TokenExpiredError) {
+						this.service.removeSession(session)
+						const token = this.service.createToken(user);
+						await this.service.createSession(new Session(token, user));
+					} else {
+						return Error('Error verifying token:' + err);
+					}
+				}
 				return UserOutput.fromUser(user, token)
 			}
 		}

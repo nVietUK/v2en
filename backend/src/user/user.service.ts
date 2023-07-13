@@ -3,6 +3,7 @@ import { User } from './user.entity';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Session } from './session.entity';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class UserService {
@@ -10,7 +11,8 @@ export class UserService {
 		@InjectRepository(User)
 		private dataSource: Repository<User>,
 		@InjectRepository(Session)
-		private sessionSource: Repository<Session>
+		private sessionSource: Repository<Session>,
+		private jwtService: JwtService
 	) { }
 
 	async findOneBy(args: FindOptionsWhere<User>): Promise<User | Error> {
@@ -37,5 +39,13 @@ export class UserService {
 
 	async removeSession(session: Session) {
 		this.sessionSource.manager.remove(Session, session)
+	}
+
+	createToken(user: User) {
+		return this.jwtService.sign({ create: Date.now(), ...user });
+	}
+
+	checkToken(token: any) {
+		return this.jwtService.verify(token);
 	}
 }
