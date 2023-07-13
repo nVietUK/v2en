@@ -42,7 +42,7 @@ export class UserService {
 	}
 
 	createToken(user: User) {
-		return this.jwtService.sign({ create: Date.now(), ...user });
+		return this.jwtService.sign({ create: Date.now(), username: user.username, userStr: user.givenName + user.familyName + user.gender + user.birthDay, id: user.id });
 	}
 
 	checkToken(token: any) {
