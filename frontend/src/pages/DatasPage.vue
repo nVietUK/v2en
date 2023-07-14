@@ -7,7 +7,7 @@
     />
   </q-list>
 
-  <router-view :user="$props.user" />
+  <router-view :user="$props.user" :id="id" />
 </template>
 
 <script lang="ts">
@@ -15,7 +15,7 @@ import { defineComponent } from 'vue';
 import EssentialData from '../components/EssentialData.vue';
 import router from 'src/router';
 import gql from 'graphql-tag';
-import { useMutation, useQuery } from 'villus';
+import { useQuery } from 'villus';
 
 const DATAS_QUERY = gql`
   query Query {
@@ -36,6 +36,8 @@ export default defineComponent({
   },
 
   props: {
+    id: { type: Number },
+
     user: {
       type: [Object, String],
       required: true,

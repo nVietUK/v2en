@@ -59,6 +59,12 @@ export default defineComponent({
               },
             },
             {
+              title: 'Datas',
+              eFunction: () => {
+                router.push({ path: '/datas' });
+              },
+            },
+            {
               title: 'LogOut',
               eFunction: async () => {
                 localStorage.removeItem('token');

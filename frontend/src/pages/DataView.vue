@@ -1,8 +1,9 @@
 <template>
-  <div>
-    <div v-if="error">{{ error.message }}</div>
-    <div v-else>
-      <div v-for="item in data" :key="item.id">{{ item.name }}</div>
+  <div class="user-profile">
+    <div class="user-info">
+      <h2>{{ data.translator }}</h2>
+      <p>Origin: {{ data.origin }}</p>
+      <p>Translated: {{ data.translated }}</p>
     </div>
   </div>
 </template>
@@ -10,7 +11,7 @@
 <script lang="ts">
 import gql from 'graphql-tag';
 import router from 'src/router';
-import { useMutation, useQuery } from 'villus';
+import { useQuery } from 'villus';
 import { defineComponent } from 'vue';
 
 const GET_DATA = gql`
@@ -30,6 +31,7 @@ export default defineComponent({
   props: {
     id: {
       type: Number,
+      required: true,
     },
     user: {
       type: [Object, String],
@@ -37,7 +39,7 @@ export default defineComponent({
     },
   },
   async setup(props) {
-    if (!props['user']) router.push('/login');
+    if (!props.user) router.push('/login');
 
     const { execute } = useQuery({
       query: GET_DATA,
@@ -46,9 +48,9 @@ export default defineComponent({
       },
     });
 
-    return {
-      ...(await execute()),
-    };
+    const { error, data } = await execute();
+
+    return { error: error, data: data.data };
   },
 });
 </script>

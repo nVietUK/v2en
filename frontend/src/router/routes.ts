@@ -29,6 +29,7 @@ const routes: RouteRecordRaw[] = [
             component: () => import('../pages/DataView.vue'),
           },
         ],
+        props: (route) => ({ id: Number(route.params.id) }),
       },
     ],
   },

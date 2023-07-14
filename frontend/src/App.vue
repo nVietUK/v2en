@@ -39,6 +39,7 @@ export default defineComponent({
     async userMutation(token: string) {
       const { execute } = useMutation(TOKEN_MUTATION, {});
       try {
+        if (!token) return '';
         const response = await execute({ token: token });
         return response.data.checkToken;
       } catch (error) {
