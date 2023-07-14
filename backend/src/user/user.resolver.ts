@@ -38,7 +38,7 @@ export class UserResolver {
 			await this.service.createSession(session);
 			return UserOutput.fromUser(user, token);
 		}
-		return Error('Incorrect username or password.');
+		return new GraphQLError('Incorrect username or password.');
 	}
 
 	@Mutation(() => String)
@@ -81,12 +81,12 @@ export class UserResolver {
 							new Session(token, user),
 						);
 					} else {
-						return Error('Error verifying token:' + err);
+						return new GraphQLError('Error verifying token:' + err);
 					}
 				}
 				return UserOutput.fromUser(user, token);
 			}
 		}
-		return Error('Invalid token');
+		return new GraphQLError('Invalid token');
 	}
 }
