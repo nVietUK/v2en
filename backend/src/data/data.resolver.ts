@@ -10,7 +10,7 @@ const pubSub = new PubSub();
 
 @Resolver(() => Data)
 export class DataResolver {
-	constructor(private readonly dataService: DataService) { }
+	constructor(private readonly dataService: DataService) {}
 
 	// Queries:Section: Data
 	@Query(() => [Data])
@@ -20,17 +20,28 @@ export class DataResolver {
 
 	// Mutations:Section: Data
 	@Mutation(() => Data)
-	async addData(@Args('newData') newData: DataInput,): Promise<Data | unknown> {
-		try {
-			let data = await Data.fromDataInput(newData);
-			if (await this.dataService.findDataOneBy({ hashValue: data.hashValue }) instanceof Error) {
-				data = await this.dataService.createData(data);
-				pubSub.publish('dataAdded', { dataAdded: data });
-				return data;
-			}
-			return new GraphQLError('Data already existed');
-		} catch (e) {
-			return e;
+	async addData(
+		@Args('newData') newData: DataInput,
+	): Promise<Data | unknown> {
+		let data = await Data.fromDataInput(newData);
+		if (
+			(await this.dataService.findDataOneBy({
+				hashValue: data.hashValue,
+			})) instanceof Error
+		) {
+			data = await this.dataService.createData(data);
+			pubSub.publish('dataAdded', { dataAdded: data });
+			return data;
 		}
+		return new GraphQLError('Data already existed');
+	}
+
+	@Mutation(() => String)
+	async removeData(@Args('inputData') inputData: DataInput) {
+		const data = await this.dataService.findDataOneBy(inputData);
+		if (data instanceof Data) {
+			this.dataService.removeData({ hashValue: data.hashValue });
+			return 'Data removed';
+		} else return new GraphQLError("Data isn't existed");
 	}
 }

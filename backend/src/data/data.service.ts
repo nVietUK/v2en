@@ -8,7 +8,7 @@ export class DataService {
 	constructor(
 		@InjectRepository(Data)
 		private dataSource: Repository<Data>,
-	) { }
+	) {}
 
 	// Section: Data
 	async findDataAll(): Promise<Data[]> {
@@ -16,7 +16,10 @@ export class DataService {
 	}
 
 	async findDataOneBy(args: FindOptionsWhere<Data>): Promise<Data | Error> {
-		return await this.dataSource.manager.findOneBy(Data, args) ?? Error('Data not found');
+		return (
+			(await this.dataSource.manager.findOneBy(Data, args)) ??
+			Error('Data not found')
+		);
 	}
 
 	async createData(createDataInput: Data): Promise<Data> {

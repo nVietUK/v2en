@@ -52,6 +52,7 @@ type Mutation {
   LogOut(username: String!, token: String!): String!
   checkToken(token: String!): UserOutput!
   addData(newData: DataInput!): DataObject!
+  removeData(inputData: DataInput!): String!
 }
 
 input UserInput {
