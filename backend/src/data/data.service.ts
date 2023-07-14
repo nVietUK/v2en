@@ -8,14 +8,15 @@ export class DataService {
 	constructor(
 		@InjectRepository(Data)
 		private dataSource: Repository<Data>,
-	) {}
+	) { }
 
-	async findAll(): Promise<Data[]> {
+	// Section: Data
+	async findDataAll(): Promise<Data[]> {
 		return await this.dataSource.manager.find(Data);
 	}
 
-	async findOneBy(args: FindOptionsWhere<Data>): Promise<Data | null> {
-		return await this.dataSource.manager.findOneBy(Data, args);
+	async findDataOneBy(args: FindOptionsWhere<Data>): Promise<Data | Error> {
+		return await this.dataSource.manager.findOneBy(Data, args) ?? Error('Data not found');
 	}
 
 	async createData(createDataInput: Data): Promise<Data> {
@@ -24,11 +25,7 @@ export class DataService {
 	}
 
 	async removeData(arg: FindOptionsWhere<Data>): Promise<void> {
-		const data = await this.findOneBy(arg);
+		const data = await this.findDataOneBy(arg);
 		await this.dataSource.manager.remove(Data, data);
-	}
-
-	async find(): Promise<Data[]> {
-		return await this.dataSource.manager.find(Data);
 	}
 }

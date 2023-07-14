@@ -1,4 +1,4 @@
-import { Args, Mutation, Resolver, Subscription } from '@nestjs/graphql';
+import { Args, Mutation, Resolver } from '@nestjs/graphql';
 import { User } from './user.entity';
 import { UserService } from './user.service';
 import { LoginInput, UserInput, UserOutput } from './user.dto';
@@ -13,6 +13,7 @@ const pubSub = new PubSub();
 export class UserResolver {
 	constructor(private readonly service: UserService) { }
 
+	// Mutations:Section: User
 	@Mutation(() => UserOutput)
 	async addUser(@Args('newUser') newUser: UserInput): Promise<UserOutput | Error> {
 		const data = await this.service.createUser(
@@ -24,7 +25,7 @@ export class UserResolver {
 
 	@Mutation(() => UserOutput)
 	async LogIn(@Args('loginUser') loginUser: LoginInput): Promise<UserOutput | Error> {
-		const user = await this.service.findOneBy({ username: loginUser.username, hashedPassword: Md5.hashStr(loginUser.password) });
+		const user = await this.service.findUserOneBy({ username: loginUser.username, hashedPassword: Md5.hashStr(loginUser.password) });
 		if (user instanceof User) {
 			const token = this.service.createToken(user)
 			const session = new Session(token, user);
@@ -36,7 +37,7 @@ export class UserResolver {
 
 	@Mutation(() => String)
 	async LogOut(@Args('username') username: string, @Args('token') token: string) {
-		const user = await this.service.findOneBy({ username: username });
+		const user = await this.service.findUserOneBy({ username: username });
 		if (user instanceof User) {
 			const session = await this.service.findSession({ user: user, token: token });
 			if (session) {
@@ -47,11 +48,12 @@ export class UserResolver {
 		return Error('User already logged out.')
 	}
 
+	// Mutations:Section: Token
 	@Mutation(() => UserOutput)
 	async checkToken(@Args('token') token: string): Promise<UserOutput | Error> {
 		const session = await this.service.findSession({ token: token });
 		if (session) {
-			const user = await this.service.findOneBy({ id: session.user.id });
+			const user = await this.service.findUserOneBy({ id: session.user.id });
 			if (user instanceof User) {
 				try {
 					this.service.checkToken(token);
@@ -68,10 +70,5 @@ export class UserResolver {
 			}
 		}
 		return Error('Invalid token')
-	}
-
-	@Subscription(() => User)
-	dataAdded() {
-		return pubSub.asyncIterator('dataAdded');
 	}
 }

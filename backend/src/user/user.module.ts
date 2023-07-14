@@ -16,7 +16,7 @@ const jwtConstants = {
 	imports: [TypeOrmModule.forFeature([User, Session]), JwtModule.register({
 		global: true,
 		secret: jwtConstants.secret,
-		signOptions: { expiresIn: '60s' },
+		signOptions: { expiresIn: '60s', algorithm: 'HS256' },
 	}),],
 })
 export class UserModule { }

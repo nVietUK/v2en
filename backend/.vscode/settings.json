@@ -6,6 +6,16 @@
 			"text": "Section:",
 			"backgroundColor": "#1D5D9B",
 			"color": "#F4D160"
+		},
+		{
+			"text": "Mutations:",
+			"backgroundColor": "#F1F6F9",
+			"color": "#394867"
+		},
+		{
+			"text": "Queries:",
+			"backgroundColor": "#F6FFDE",
+			"color": "#AAC8A7"
 		}
 	],
 	"todohighlight.include": [

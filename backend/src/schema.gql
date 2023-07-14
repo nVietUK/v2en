@@ -43,7 +43,6 @@ type DataObject {
 }
 
 type Query {
-  data(id: Float!): DataObject!
   datas: [DataObject!]!
 }
 

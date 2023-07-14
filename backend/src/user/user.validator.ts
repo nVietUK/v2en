@@ -30,7 +30,7 @@ export class IsUserNameExistedConstraint
 	) { }
 
 	async validate(value: any): Promise<boolean> {
-		return !((await this.userService.findOneBy({ username: value })) instanceof User);
+		return !((await this.userService.findUserOneBy({ username: value })) instanceof User);
 	}
 }
 
