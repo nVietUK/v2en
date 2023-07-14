@@ -64,7 +64,6 @@ export default defineComponent({
     },
   },
 
-  name: 'LoginPage',
   setup(props) {
     if (props.user) router.push('/profile');
 

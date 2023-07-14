@@ -3,8 +3,6 @@ import { Md5 } from 'ts-md5';
 import { Column, Entity, PrimaryColumn, PrimaryGeneratedColumn } from 'typeorm';
 import { DataInput } from './data.dto';
 import { Injectable } from '@nestjs/common';
-import { DataService } from './data.service';
-import { GraphQLError } from 'graphql';
 
 @Entity()
 @ObjectType('DataObject')
@@ -22,17 +20,13 @@ export class Data {
 		this.verified = verified;
 	}
 
-	static async fromDataInput(data: DataInput, dataService?: DataService) {
-		const ndata = new Data(
+	static async fromDataInput(data: DataInput) {
+		return new Data(
 			data.origin,
 			data.translated,
 			data.translator,
 			data.verified,
 		);
-		if (dataService) {
-			await ndata.validate(dataService);
-		}
-		return ndata;
 	}
 
 	@PrimaryGeneratedColumn()
@@ -60,17 +54,4 @@ export class Data {
 
 	@Column({ default: false })
 	verified: boolean;
-
-	private async validate(dataService: DataService) {
-		const result = await dataService?.findOneBy({
-			hashValue: this.hashValue,
-		});
-		if (result != null) {
-			throw new GraphQLError('Data is existed', {
-				extensions: {
-					code: 'BAD_USER_INPUT',
-				},
-			});
-		}
-	}
 }

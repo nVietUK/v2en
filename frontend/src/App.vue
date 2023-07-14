@@ -35,7 +35,6 @@ const LOGOUT_MUTATION = gql`
 `;
 
 export default defineComponent({
-  name: 'App',
   methods: {
     async userMutation(token: string) {
       const { execute } = useMutation(TOKEN_MUTATION, {});

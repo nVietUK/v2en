@@ -1,5 +1,5 @@
 <template>
-  <q-layout view="hhh lpr lff">
+  <q-layout view="lhh LpR ffr">
     <q-header reveal bordered class="bg-primary text-white">
       <q-toolbar>
         <q-btn dense flat round icon="menu" @click="toggleLeftDrawer" />
@@ -30,8 +30,6 @@ import EssentialLink from '../components/EssentialLink.vue';
 import router from 'src/router';
 
 export default defineComponent({
-  name: 'MainLayout',
-
   components: {
     EssentialLink,
   },

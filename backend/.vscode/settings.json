@@ -1,0 +1,35 @@
+{
+	"todohighlight.isEnable": true,
+	"todohighlight.isCaseSensitive": true,
+	"todohighlight.keywords": [
+		{
+			"text": "Section:",
+			"backgroundColor": "#1D5D9B",
+			"color": "#F4D160"
+		}
+	],
+	"todohighlight.include": [
+		"**/*.js",
+		"**/*.jsx",
+		"**/*.ts",
+		"**/*.tsx",
+		"**/*.html",
+		"**/*.php",
+		"**/*.css",
+		"**/*.scss"
+	],
+	"todohighlight.exclude": [
+		"**/node_modules/**",
+		"**/bower_components/**",
+		"**/dist/**",
+		"**/build/**",
+		"**/.vscode/**",
+		"**/.github/**",
+		"**/_output/**",
+		"**/*.min.*",
+		"**/*.map",
+		"**/.next/**"
+	],
+	"todohighlight.maxFilesForSearch": 5120,
+	"todohighlight.toggleURI": false
+}

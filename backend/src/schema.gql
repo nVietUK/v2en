@@ -82,7 +82,3 @@ input DataInput {
   """confirm that data is verified by authorizer"""
   verified: Boolean! = false
 }
-
-type Subscription {
-  dataAdded: DataObject!
-}

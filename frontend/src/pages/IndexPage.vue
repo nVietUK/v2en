@@ -12,7 +12,6 @@
 import { defineComponent } from 'vue';
 import ReadMeViewer from '../components/ReadMeViewer.vue';
 export default defineComponent({
-  name: 'IndexPage',
   components: {
     ReadMeViewer,
   },
