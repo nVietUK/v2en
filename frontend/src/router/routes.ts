@@ -1,3 +1,4 @@
+import { route } from 'quasar/wrappers';
 import { RouteRecordRaw } from 'vue-router';
 
 const routes: RouteRecordRaw[] = [
@@ -20,8 +21,15 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: '/datas',
-        component: () => import('../pages/DatasPage.vue')
-      }
+        component: () => import('../pages/DatasPage.vue'),
+        children: [
+          {
+            path: ':id',
+            name: 'dataViewer',
+            component: () => import('../pages/DataView.vue'),
+          },
+        ],
+      },
     ],
   },
 

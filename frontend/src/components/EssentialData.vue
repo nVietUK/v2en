@@ -1,5 +1,5 @@
 <template>
-  <q-item clickable tag="a" target="_blank" @click="eFunction()">
+  <q-item clickable tag="a" target="_blank" @click="eFunction($props.id)">
     <q-item-section v-if="icon" avatar>
       <q-icon :name="icon" />
     </q-item-section>
@@ -19,6 +19,11 @@ import router from 'src/router';
 
 export default defineComponent({
   props: {
+    id: {
+      type: Number,
+      required: true,
+    },
+
     origin: {
       type: String,
       default: '',
@@ -41,7 +46,7 @@ export default defineComponent({
 
     eFunction: {
       type: Function,
-      default: () => router.push('/view'),
+      default: (id: number) => router.push('/datas/' + id),
       optional: true,
     },
 

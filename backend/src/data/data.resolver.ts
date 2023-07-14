@@ -18,6 +18,11 @@ export class DataResolver {
 		return this.dataService.findDataAll();
 	}
 
+	@Query(() => Data)
+	async data(@Args('id') id: number): Promise<Data | Error> {
+		return await this.dataService.findDataOneBy({ id: id });
+	}
+
 	// Mutations:Section: Data
 	@Mutation(() => Data)
 	async addData(

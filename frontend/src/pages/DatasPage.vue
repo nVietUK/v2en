@@ -1,11 +1,13 @@
 <template>
-  <q-list>
+  <q-list v-if="$route.path === '/datas'">
     <EssentialData
       v-for="link in essentialLinks"
       :key="link.title"
       v-bind="link"
     />
   </q-list>
+
+  <router-view :user="$props.user" />
 </template>
 
 <script lang="ts">
@@ -13,7 +15,7 @@ import { defineComponent } from 'vue';
 import EssentialData from '../components/EssentialData.vue';
 import router from 'src/router';
 import gql from 'graphql-tag';
-import { useMutation } from 'villus';
+import { useMutation, useQuery } from 'villus';
 
 const DATAS_QUERY = gql`
   query Query {
@@ -38,12 +40,16 @@ export default defineComponent({
       type: [Object, String],
       required: true,
     },
+
+    data: {
+      type: [Object],
+    },
   },
 
   async setup(props) {
     if (!props.user) router.push('/login');
 
-    const { execute } = useMutation(DATAS_QUERY);
+    const { execute } = useQuery({ query: DATAS_QUERY });
     const linksList = (await execute()).data.datas;
 
     return {
