@@ -5,8 +5,10 @@
     </q-item-section>
 
     <q-item-section>
-      <q-item-label>{{ title }}</q-item-label>
-      <q-item-label caption>{{ caption }}</q-item-label>
+      <q-item-label>{{ origin + ' >> ' + translated }}</q-item-label>
+      <q-item-label caption>{{
+        'translator: ' + translator + ' verified: ' + verified
+      }}</q-item-label>
     </q-item-section>
   </q-item>
 </template>
@@ -17,20 +19,29 @@ import router from 'src/router';
 
 export default defineComponent({
   props: {
-    title: {
-      type: String,
-      required: true,
-    },
-
-    caption: {
+    origin: {
       type: String,
       default: '',
-      optional: true,
+    },
+
+    translated: {
+      type: String,
+      default: '',
+    },
+
+    translator: {
+      type: String,
+      default: '',
+    },
+
+    verified: {
+      type: Boolean,
+      default: false,
     },
 
     eFunction: {
       type: Function,
-      default: () => router.push('/'),
+      default: () => router.push('/view'),
       optional: true,
     },
 

@@ -37,11 +37,21 @@ export class DataResolver {
 	}
 
 	@Mutation(() => String)
-	async removeData(@Args('inputData') inputData: DataInput) {
-		const data = await this.dataService.findDataOneBy(inputData);
+	async removeData(@Args('id') id: number) {
+		const data = await this.dataService.findDataOneBy({ id: id });
 		if (data instanceof Data) {
 			this.dataService.removeData({ hashValue: data.hashValue });
 			return 'Data removed';
 		} else return new GraphQLError("Data isn't existed");
+	}
+
+	@Mutation(() => String)
+	async modifyData(
+		@Args('id') id: number,
+		@Args('newData') newData: DataInput,
+	) {
+		this.removeData(id);
+		this.addData(newData);
+		return 'Data modified';
 	}
 }
